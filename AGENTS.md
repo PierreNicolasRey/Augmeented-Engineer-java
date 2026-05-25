@@ -81,6 +81,7 @@ Located in `<repository_root>/infrastructure/`. This is the technical, outbound 
 - Implements persistence (JPA repositories, database configuration), messaging/event dispatching, and external service integrations.
 - Translates Domain Events into actual technical actions, log entries, or background tasks.
 
+
 ## Repository Structure
 
 ```text
@@ -88,7 +89,7 @@ Located in `<repository_root>/infrastructure/`. This is the technical, outbound 
 ├─ application/                      # REST controllers, DTOs, API layer
 │  ├─ build.gradle.kts
 │  └─ src/
-│     ├─ main/java/[root_package]/   # e.g., fr/belair/buvette/
+│     ├─ main/java/[root_package]/   # e.g., com/exalt/it/belair
 │     │  ├─ rest/                    # HTTP Controllers
 │     │  ├─ dto/                     # Request/Response DTO records
 │     │  └─ mapper/                  # Application mappers (DTO <-> Domain)
@@ -131,6 +132,7 @@ Located in `<repository_root>/infrastructure/`. This is the technical, outbound 
 └─ AGENTS.md                         # This file (agent instructions and guidelines)
 ```
 
+
 ## Data Models & Mapping Rules
 
 To maintain strict boundaries, each module has its own data representation and local mappers. You MUST follow this multi-tier mapping strategy:
@@ -145,3 +147,26 @@ To maintain strict boundaries, each module has its own data representation and l
    - Responsible for mapping database rows to Persistence Entities, and mapping those entities to Domain Models/Read Models (`toDomain`) when returning data through Outbound Ports.
    - Responsible for mapping Domain Models back to Persistence Entities (`toEntity`) when saving state.
    - Contains its own local mappers (persistence/mapper/).
+
+
+## Development guidelines
+
+- Integrate the Java coding guidelines defined in [here](./docs/agents/instructions/coding/java-coding-guidelines.md) when working on Java code
+- Integrate the git usage directives defined in [here](./docs/agents/instructions/coding/git-guidelines.md) when working with git
+- Integrate the testing guidelines defined for each module when working on tests :
+  - **Application Module** : [Application Testing Philosophy](./docs/agents/instructions/testing/application-testing-guidelines.md)
+  - **Domain Module** : [Domain Testing Philosophy](./docs/agents/instructions/testing/domain-testing-guidelines.md)
+  - **Infrastructure Module** : [Infrastructure Testing Philosophy](./docs/agents/instructions/testing/infrastructure-testing-guidelines.md)
+- Integrate the development workflow instructions defined in [here](./docs/agents/instructions/development-workflow-guidelines.md) when implementing code.
+
+## Code Review guidelines
+
+When reviewing code, follow the [Code Review Guidelines](./docs/agents/instructions/coding/code-review-guidelines.md) strictly.
+
+## Documentation guidelines
+
+When documenting code or practices, follow the [Documentation Guidelines](./docs/agents/instructions/documentation/documentation-guidelines.md) strictly.
+
+## AGENTS.md Maintenance guidelines
+
+When working on improving the AGENTS.md instructions or other agent-related documentation, follow the [AGENTS.md Maintenance Guidelines](./docs/agents/instructions/coding/agents-md-maintenance-guidelines.md) strictly.
