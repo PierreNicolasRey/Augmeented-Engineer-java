@@ -19,18 +19,26 @@ Your responsibilities include:
 You MUST strictly adhere to the following guidelines:
 
 ### CRITICAL : Context Markers
-- **ALWAYS** start replies with the default STARTER_CHARACTER 🍀 followed by a space. This emoji appears in ALL replies.
+- **ALWAYS** start replies with STARTER_CHARACTER 🍀 followed by a space. This emoji appears in ALL replies.
 - **ALWAYS** Stack emojis when the context is specific: add the context-specific emoji after 🍀, separated by a space (e.g., 🍀 🔎, 🍀 💻, 🍀 🏗️). Do not replace the default emoji; add to it.
-- **ALWAYS** start replies with 🔎 as STARTER_CHARACTER when you are conducting analysis or research, or designing architecture or high-level structures.
-- **ALWAYS** start replies with 💻 as STARTER_CHARACTER when you are implementing code.
-- **ALWAYS** start replies with 🕵️ as STARTER_CHARACTER when you are reviewing code.
-- **ALWAYS** start replies with 📚 as STARTER_CHARACTER when you are documenting code or practices.
-- **ALWAYS** start replies with 🏗️ as STARTER_CHARACTER when you are working on improving the AGENTS.md instructions or other agent-related documentation.
-- **ALWAYS** start replies with 🗒️ as STARTER_CHARACTER when you are drafting a proposal plan, action roadmap, or requirements analysis.
-- **ALWAYS** start replies with ✏️ as STARTER_CHARACTER when you are implementing or editing an instruction file (`*-guidelines.md` or `AGENTS.md`).
-- **ALWAYS** start replies with 🔴 as STARTER_CHARACTER when entering a red phase of TDD (writing failing tests).
-- **ALWAYS** start replies with 🟢 as STARTER_CHARACTER when entering a green phase of TDD (writing code to make tests pass).
-- **ALWAYS** start replies with ⚪ as STARTER_CHARACTER when entering a refactoring phase of TDD (improving code without changing behavior).
+- **ALWAYS** enhance the start of replies with 🔎 as FOLLOW_CHARACTER when you are conducting analysis or research, or designing architecture or high-level structures.
+- **ALWAYS** enhance the start of replies with 💻 as FOLLOW_CHARACTER when you are implementing code.
+- **ALWAYS** enhance the start of replies with 🕵️ as FOLLOW_CHARACTER when you are reviewing code.
+- **ALWAYS** enhance the start of replies with 📚 as FOLLOW_CHARACTER when you are documenting code or practices.
+- **ALWAYS** enhance the start of replies with 🏗️ as FOLLOW_CHARACTER when you are working on improving the AGENTS.md instructions or other agent-related documentation.
+- **ALWAYS** enhance the start of replies with 🗒️ as FOLLOW_CHARACTER when you are drafting a proposal plan, action roadmap, or requirements analysis.
+- **ALWAYS** enhance the start of replies with ✏️ as FOLLOW_CHARACTER when you are implementing or editing an instruction file (`*-guidelines.md` or `AGENTS.md`) after validation.
+- **ALWAYS** enhance the start of replies with 🔴 as FOLLOW_CHARACTER when entering a red phase of TDD (writing failing tests—code implementation).
+- **ALWAYS** enhance the start of replies with 🟢 as FOLLOW_CHARACTER when entering a green phase of TDD (writing code to make tests pass—code implementation).
+- **ALWAYS** enhance the start of replies with ⚪ as FOLLOW_CHARACTER when entering a refactoring phase of TDD (improving code without changing behavior—code implementation).
+
+**Key stacking examples:**
+- Simple code implementation: `🍀 💻 [response]`
+- Green phase TDD (implementing to pass tests): `🍀 💻 🟢 [response]`
+- Red phase TDD (writing failing tests): `🍀 💻 🔴 [response]`
+- Code review: `🍀 🕵️ [response]`
+- Editing instructions after validation: `🍀 🏗️ ✏️ [response]`
+- Proposal for instructions improvement: `🍀 🏗️ 🗒️ [response]`
 
 
 ### MAJOR : Active Partner
