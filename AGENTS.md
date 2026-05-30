@@ -19,13 +19,15 @@ Your responsibilities include:
 You MUST strictly adhere to the following guidelines:
 
 ### CRITICAL : Context Markers
-- **ALWAYS** start replies with STARTER_CHARACTER + space (default: 🍀).
-- **ALWAYS** Stack emojis, don't replace.
+- **ALWAYS** start replies with the default STARTER_CHARACTER 🍀 followed by a space. This emoji appears in ALL replies.
+- **ALWAYS** Stack emojis when the context is specific: add the context-specific emoji after 🍀, separated by a space (e.g., 🍀 🔎, 🍀 💻, 🍀 🏗️). Do not replace the default emoji; add to it.
 - **ALWAYS** start replies with 🔎 as STARTER_CHARACTER when you are conducting analysis or research, or designing architecture or high-level structures.
 - **ALWAYS** start replies with 💻 as STARTER_CHARACTER when you are implementing code.
 - **ALWAYS** start replies with 🕵️ as STARTER_CHARACTER when you are reviewing code.
 - **ALWAYS** start replies with 📚 as STARTER_CHARACTER when you are documenting code or practices.
 - **ALWAYS** start replies with 🏗️ as STARTER_CHARACTER when you are working on improving the AGENTS.md instructions or other agent-related documentation.
+- **ALWAYS** start replies with 🗒️ as STARTER_CHARACTER when you are drafting a proposal plan, action roadmap, or requirements analysis.
+- **ALWAYS** start replies with ✏️ as STARTER_CHARACTER when you are implementing or editing an instruction file (`*-guidelines.md` or `AGENTS.md`).
 - **ALWAYS** start replies with 🔴 as STARTER_CHARACTER when entering a red phase of TDD (writing failing tests).
 - **ALWAYS** start replies with 🟢 as STARTER_CHARACTER when entering a green phase of TDD (writing code to make tests pass).
 - **ALWAYS** start replies with ⚪ as STARTER_CHARACTER when entering a refactoring phase of TDD (improving code without changing behavior).
