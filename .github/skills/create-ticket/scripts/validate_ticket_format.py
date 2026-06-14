@@ -1,7 +1,7 @@
 import re
 import sys
 
-def validate_issue_format(content):
+def validate_ticket_format(content):
     """
     Validate high-level issue structure and basic Gherkin syntax.
     Returns (is_valid: bool, errors: list[str]).
@@ -63,18 +63,18 @@ def validate_issue_format(content):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("INVALID: Usage: python validate_issue_format.py <issue_file>")
+        print("INVALID: Usage: python validate_ticket_format.py <ticket_file>")
         sys.exit(2)
 
-    issue_file = sys.argv[1]
+    ticket_file = sys.argv[1]
     try:
-        with open(issue_file, "r", encoding="utf-8") as f:
+        with open(ticket_file, "r", encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
-        print(f"INVALID: Could not read file '{issue_file}': {e}")
+        print(f"INVALID: Could not read file '{ticket_file}': {e}")
         sys.exit(2)
 
-    is_valid, errors = validate_issue_format(content)
+    is_valid, errors = validate_ticket_format(content)
     if is_valid:
         print("VALID")
         sys.exit(0)
