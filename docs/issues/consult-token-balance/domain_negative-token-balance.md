@@ -1,25 +1,25 @@
-# Issue: Prevent negative token balances for festival goers
+# Issue: Prevent negative drink and snack token balances
 
 ## Context
-The current feature for consulting a festival goer's remaining token balance must ensure that no user can have a negative quantity of drink or snack tokens.
+The feature for consulting a festival goer's remaining tokens relies on a domain invariant: drink and snack balances must never be negative.
 
 ## Problem
-A festival goer may end up with a negative token balance due to missing validation or incorrect token accounting during token issuance, transfers, or order placement.
+A festival goer may end up with a negative token balance because domain-level validation is missing when balances are updated during transfers, order placement, or refunds.
 
 ## Success Criteria
-- The domain model must prevent creation or persistence of any festival goer state with negative drink or snack tokens.
-- Any token operation (issuance, transfer, order placement, cancellation) must enforce non-negative balances.
-- The validation must be expressed in domain invariants and tested at the domain layer.
+- The domain model must enforce that drink and snack token balances are never negative.
+- All token operations must reject adjustments that would cause a negative balance.
+- The invariant must be implemented in the domain layer and covered by focused domain tests.
 
 ## Implementation Plan
-1. Review the festival goer token model and identify where drink/snack balances are updated.
-2. Add domain-level validation to reject negative token adjustments.
+1. Identify the domain model or aggregate responsible for festival goer token balances.
+2. Add domain validation preventing token balance adjustments that would result in negative drink or snack balances.
 3. Add unit tests covering:
-   - direct balance updates to negative values
-   - transfer that would cause negative balance
-   - order placement that would exceed available tokens
-   - cancellation and refund behavior that preserves non-negative balance
-4. Ensure any persistence adapter or mapper preserves the invariant.
+   - invalid direct balance adjustments to negative values
+   - transfers that would cause a negative balance
+   - order placement that exceeds available tokens
+   - cancellation/refund behavior that maintains non-negative balances
+4. Verify that persistence adapters and mappers do not allow invalid domain state to be stored.
 
 ## Gherkin Scenarios
 ### Scenario: Prevent negative drink token balance on issuance
