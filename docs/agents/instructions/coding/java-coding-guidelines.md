@@ -71,6 +71,25 @@ public class PlaceGroupOrderUseCase implements PlaceGroupOrderInboundPort {
 
 - **Exceptions:** Use runtime (unchecked) exceptions for unrecoverable business rule violations or programming errors. Design custom, descriptive domain exceptions (e.g., TokenBalanceInsufficientException).
 
+## Javadoc & Documentation
+
+- **Public scope (mandatory):** Every public class, interface, and method MUST have complete Javadoc including `@param` for all parameters, `@return` for non-void methods, and `@throws` for checked/domain exceptions.
+- **Private scope (optional):** Javadoc is reserved for non-obvious code paths.
+- Use `{@link ClassName}` to reference other classes or methods within Javadoc.
+- Prefer high-level intent over implementation details.
+
+Example:
+```java
+/**
+ * Places a group order and publishes {@link OrderPlacedEvent}.
+ * 
+ * @param basket the shopping basket containing items to order
+ * @throws EmptyBasketException if basket contains no items
+ * @throws InvalidCustomerException if customer is not found or inactive
+ */
+public void placeOrder(Basket basket) { ... }
+```
+
 ## Logging
 
 - Use `org.slf4j.Logger`:

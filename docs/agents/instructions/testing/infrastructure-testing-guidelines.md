@@ -116,10 +116,6 @@ class OrderMapperTest {
 - **Constraints**: Duplicate keys, foreign keys, and other database constraints work.
 - **Migrations**: Flyway migrations execute successfully on a clean schema.
 - **Event Publishing**: Events are delivered to the message broker.
-
----
-
-## Adapter Round-Trip**: Domain Model → Persistence Entity → Database → Retrieval → Domain Model mapping works correctly.
 - **Query Results**: Adapters return correct Domain Models or Read Models from database.
 - **Constraint Handling**: Database constraints (unique keys, foreign keys) are properly validated.
 - **Mapper Bidirectionality**: Entities map to Domain and back without data loss.
@@ -138,4 +134,4 @@ class OrderMapperTest {
 - Test JPA repository methods—Spring Data is already tested.
 - Mock the database—use Testcontainers for real integration.
 - Test business logic (belongs in domain tests).
-- Call Use Cases directly
+- Call Use Cases directly.

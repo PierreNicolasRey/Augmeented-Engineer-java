@@ -83,7 +83,7 @@ class CatalogQueryServiceTest {
 
 ---
 
-## What to Test
+## How to Test
 
 Fakes are lightweight, in-memory implementations of secondary ports (repositories, event publishers, etc.):
 
@@ -145,8 +145,6 @@ public interface TestState<T, ID> {
 
 ---
 
----
-
 ## What to Test
 
 - **Happy path**: Use Case/Service successfully processes valid input.
@@ -158,19 +156,12 @@ public interface TestState<T, ID> {
 
 ---
 
-## Writing Fakes for Ports
-
-Fakes are lightweight, in-memory implementations of secondary ports (repositories, event publishers, etc.):
-
----
-
 ## Principles
 
 ✅ **DO:**
 - Test through Use Case handlers (primary ports).
 - Use lightweight fakes for secondary ports.
 - Assert on observable behavior, not implementation.
-- Name tests clearly with the `[method]_should[Behavior]_when[Scenario]()` pattern.
 
 ❌ **DON'T:**
 - Use Spring, Mockito, or JPA annotations in domain code.
