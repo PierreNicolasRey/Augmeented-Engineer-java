@@ -9,7 +9,7 @@ description: Create an issue in the form of a markdown file with title, descript
 3. Identify impacted modules. If more than one module is impacted, you MUST generate one issue per module. For each module : 
     1. Summarize the context specific to the module
     2. Identify specific success criteria for the module
-    3. Generate a concise title and structured description.
+    3. Generate a concise title, structured description, and implementation plan.
     4. Produce 1..N Gherkin scenarios covering happy path and edge cases.
     5. Create the issue in the `docs/issues/{feature_name}/{module_name}_{issue_title}.md` file using the `templates/issue.md` template.
     6. Validate the issue using `scripts/validate_issue_format.py`.
