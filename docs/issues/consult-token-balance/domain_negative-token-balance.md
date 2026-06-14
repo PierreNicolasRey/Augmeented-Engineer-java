@@ -21,6 +21,7 @@ A festival goer may end up with a negative token balance because domain-level va
    - cancellation/refund behavior that maintains non-negative balances
 4. Verify that persistence adapters and mappers do not allow invalid domain state to be stored.
 
+**Gherkin Scenarios**
 Feature: Prevent negative token balances in festival goer token accounting
 
 Scenario: Prevent negative drink token balance on issuance
