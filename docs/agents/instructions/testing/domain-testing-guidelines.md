@@ -162,6 +162,7 @@ public interface TestState<T, ID> {
 - Test through Use Case handlers (primary ports).
 - Use lightweight fakes for secondary ports.
 - Assert on observable behavior, not implementation.
+- Extract Fake implementations into a separate file to be re-used
 
 ❌ **DON'T:**
 - Use Spring, Mockito, or JPA annotations in domain code.

@@ -21,11 +21,15 @@ model: Claude Haiku 4.5 (copilot)
     - for the domain module, follow the guidelines in `docs/agents/instructions/testing/domain-testing.instructions.md`
     - for the application module, follow the guidelines in `docs/agents/instructions/testing/application-testing.instructions.md`
     - for the infrastructure module, follow the guidelines in `docs/agents/instructions/testing/infrastructure-testing.instructions.md`
-4. Run the test to confirm it fails.
+4. If the test triggers compilation errors because the target production classes, interfaces, or methods do not exist yet, you MUST create their empty skeletons (stubs) in the main production source tree (`src/main/java`). 
+   - Skeletons must contain ONLY the class/interface declaration and empty method signatures (returning default values like `null`, `0`, or throwing `UnsupportedOperationException`).
+   - Do NOT implement any business logic.
+5. If the test needs a Fake implementation, create a new Fake class in the appropriate directory structure based on the module (domain, application, infrastructure) and implement the necessary methods to support the test case. Do **NOT** implement the Fake inside the test file itself.
+6. Run the test to confirm it compiles and fails.
 
 ## Requirements
 - You **MUST** follow the guidelines for the module you are currently working on.
-- **NEVER** implement any production code in this step. Your ONLY goal is to write a failing test.
+- **CRITICAL** **NEVER** implement any production logic or business features in this step. Skeletons and structural method signatures created in `src/main/java` purely to resolve Java compilation errors are **NOT** considered production logic. Your ONLY goal is to achieve a compiling project with a failing test (RED execution).
 - You **MUST** ensure the test fails when executed. 
 - The name of the test method should be descriptive and follow the naming conventions outlined in the testing guidelines.
 

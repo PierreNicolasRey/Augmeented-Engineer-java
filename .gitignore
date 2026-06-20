@@ -1,7 +1,23 @@
 # Ignore IDE and editor settings
-.idea/
+.metadata/
+bin/
+tmp/
+*.class
+.classpath
+.project
+.settings/
+.factorypath
 .vscode/
 
 # Ignore Gradle project-specific cache and build directories
 .gradle/
-/build/
+build/
+build-logic/build/
+build-logic/.gradle/
+domain/build/
+application/build/
+infrastructure/build/
+
+# Python validation tools
+__pycache__/
+*.pyc

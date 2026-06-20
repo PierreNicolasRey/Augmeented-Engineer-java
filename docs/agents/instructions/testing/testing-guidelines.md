@@ -7,8 +7,11 @@
 - Integration tests: `[ClassUnderTest]IntegrationTest` (e.g., `OrderRepositoryIntegrationTest`)
 
 **Method naming:**
+- **ALWAYS** apply this naming convention
 - Pattern: `[methodName]_should[ExpectedBehavior]_when[Scenario]()`
-- Example: `create_shouldPersistOrder_whenBasketIsValid()`
+- Example: 
+    - Correct : `create_shouldPersistOrder_whenBasketIsValid()`
+    - Incorrect : `shouldCreateOrderWithPendingStatusWhenPlacingSimpleOrder()`
 
 **Variable naming:**
 - `sut` = System Under Test (the object being tested)
