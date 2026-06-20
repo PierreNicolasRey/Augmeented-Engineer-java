@@ -1,119 +1,218 @@
 # Examples
 
+## Example 1: Feature "Export Contacts to CSV"
+
 Input: "The user wants to export their contacts list to CSV"
 
-Output:
-Three files, one per module : one for the domain, one for the application, one for the infrastructure.
+Output: Three files, one per module
+
+### ✅ GOOD EXAMPLE - Domain Ticket (Comprehensive)
 
 file `docs/features/export-contacts/domain_export-contacts.md`
 ```markdown
 # Export Contacts List : Domain Module impact
+
 **Context**
 The user wants to export their contacts list to CSV so they can share or back up their data.
 
+**Problem**
+The Domain layer must support building an export-ready model that includes all required contact fields and handles edge cases gracefully.
+
 **Acceptance Criteria**
-- The domain layer supports a contacts export request and returns an export-ready model.
-- The export model includes all required contact fields.
-- The export flow handles empty contact lists gracefully.
+- The domain layer provides a ContactExportQuery service
+- The service returns an immutable ExportReadModel with all contact fields
+- Empty contact lists are handled gracefully (returns empty list, not error)
+- Archived/inactive contacts are excluded from export
 
 **Implementation Plan**
-1. Add a domain read model for contact exports.
-2. Add a domain query service that builds export-ready contact data.
-3. Add domain tests for populated and empty export results.
+1. Create `ContactExportReadModel` immutable record
+2. Create `ContactExportQueryService` with export query logic
+3. Add unit tests for populated, empty, and filtered contact lists
 
 **Gherkin Scenarios**
 Feature: Export contacts list
 
-Scenario: Successfully export contacts
-Given an authenticated user with 20 contacts
-When executing a domain export request
-Then the system retrieves all 20 contacts and produces an export-ready model
+Scenario: Export contacts with populated list
+  Given a user with 20 active contacts
+  When the domain export query is executed
+  Then the system returns ExportReadModel with all 20 contacts
+  And each contact includes all required fields (name, email, phone)
 
-Scenario: No contacts to export
-Given an authenticated user with no contacts
-When executing a domain export request
-Then the system returns an empty export result
+Scenario: Export with empty contact list
+  Given a user with no contacts
+  When the domain export query is executed
+  Then the system returns ExportReadModel with empty list
+  And no error is thrown
+
+Scenario: Export excludes archived contacts
+  Given a user with 10 active and 5 archived contacts
+  When the domain export query is executed
+  Then only the 10 active contacts are included in the result
+  And archived contacts are filtered out
+
+**Notes**
+- Export is read-only; no state changes
+- ReadModel is immutable for thread-safety
 ```
+
+### ✅ GOOD EXAMPLE - Application Ticket (Comprehensive)
 
 file `docs/features/export-contacts/application_export-contacts.md`
 ```markdown
 # Export Contacts List : Application Module impact
+
 **Context**
-The user wants to export their contacts list to CSV through the public API.
+The API must expose a CSV export endpoint that maps HTTP requests to domain export flow and returns properly formatted CSV content.
+
+**Problem**
+The Application layer must provide a REST endpoint for contact exports with appropriate error handling and response formatting.
 
 **Acceptance Criteria**
-- The application exposes a CSV export endpoint for contacts.
-- The endpoint delegates to the domain export flow and returns the CSV payload.
-- The endpoint handles empty contact lists with a successful response.
+- HTTP endpoint created: `GET /api/v1/contacts/export?format=csv`
+- Request parameter: `format` (optional, defaults to csv)
+- Response includes `Content-Type: text/csv` and `Content-Disposition` headers
+- Success response (HTTP 200) with CSV payload
+- Error handling for unauthenticated requests (401), invalid parameters (400)
 
 **Implementation Plan**
-1. Add a new controller endpoint for contact exports.
-2. Map incoming requests to the domain export request.
-3. Add application tests for successful and empty export responses.
+1. Create controller endpoint in `ContactController`
+2. Map request to domain `ContactExportQueryService`
+3. Format response with proper CSV headers
+4. Add integration tests for success and error cases
 
 **Gherkin Scenarios**
-Feature: Export contacts list
+Feature: Export contacts via API
 
-Scenario: Successfully export contacts via API
-Given an authenticated user with 20 contacts
-When calling GET /contacts/export with `Accept: text/csv`
-Then the application processes the request and returns a CSV payload
+Scenario: Successfully export contacts as CSV
+  Given an authenticated user with 10 contacts
+  When calling GET /api/v1/contacts/export?format=csv
+  Then HTTP 200 OK response is returned
+  And Content-Type header is text/csv
+  And response body contains CSV formatted contacts
 
-Scenario: No contacts to export via API
-Given an authenticated user with no contacts
-When calling GET /contacts/export with `Accept: text/csv`
-Then the application returns a successful response with an empty CSV result
+Scenario: Export with no contacts
+  Given an authenticated user with no contacts
+  When calling GET /api/v1/contacts/export?format=csv
+  Then HTTP 200 OK response is returned
+  And response body is CSV header only (empty data)
+
+Scenario: Invalid format parameter
+  Given a request with format=xml
+  When calling GET /api/v1/contacts/export?format=xml
+  Then HTTP 400 Bad Request is returned
+  And error message indicates format must be csv
+
+Scenario: Unauthenticated request
+  Given an unauthenticated user
+  When calling GET /api/v1/contacts/export?format=csv without auth token
+  Then HTTP 401 Unauthorized is returned
+
+**Notes**
+- CSV format is the only supported export format for this version
+- Empty contact list still returns valid CSV (header only)
 ```
+
+### ✅ GOOD EXAMPLE - Infrastructure Ticket (Comprehensive)
 
 file `docs/features/export-contacts/infrastructure_export-contacts.md`
 ```markdown
 # Export Contacts List : Infrastructure Module impact
+
 **Context**
-The user wants the contact export to be transformed and streamed as valid CSV content.
-
-**Acceptance Criteria**
-- The infrastructure layer transforms export read models into valid CSV content.
-- The CSV output includes all contact details in the expected columns.
-- The export stream is delivered without data loss or formatting errors.
-
-**Implementation Plan**
-1. Implement a CSV transformer for contact export read models.
-2. Ensure the infrastructure layer produces a valid CSV stream.
-3. Add integration tests verifying CSV structure and content.
-
-**Gherkin Scenarios**
-Feature: Export contacts list
-
-Scenario: Transform contacts export model to CSV
-Given an export model containing 20 contacts
-When transforming the model to CSV
-Then the infrastructure produces valid CSV content with all contact details
-```
-
-file `docs/issues/export-contacts/application_export-contacts-invalid-mime-type.md`
-```markdown
-# Issue: Application export endpoint returns wrong MIME type
-**Context**
-Users request contact exports in CSV format, but the application layer must return the correct headers so browsers and clients can consume the file correctly.
+The infrastructure layer must transform domain ExportReadModel into valid CSV content streamed over HTTP.
 
 **Problem**
-The current CSV export endpoint returns the wrong `Content-Type`, causing some clients to reject the download or save the file with an incorrect type.
+The Infrastructure layer needs CSV serialization logic and proper stream handling to deliver contact exports.
 
 **Acceptance Criteria**
-- The export endpoint responds with `Content-Type: text/csv` for CSV exports.
-- The response includes a `Content-Disposition` header with a `.csv` filename.
-- Non-CSV export requests continue to use the correct MIME type.
+- CSV transformer converts ExportReadModel to valid RFC 4180 CSV format
+- Header row includes all contact field names
+- Data rows include all contact values with proper escaping
+- Large contact lists (1000+) are streamed without loading into memory
+- Integration tests verify CSV structure and content
 
 **Implementation Plan**
-1. Inspect the application controller and response mapper for CSV export.
-2. Fix the response headers for CSV exports.
-3. Add integration tests validating the CSV response headers.
+1. Create `ContactExportCsvTransformer` class
+2. Implement CSV serialization with proper escaping
+3. Configure streaming response in Spring
+4. Add integration tests with sample data sets
 
 **Gherkin Scenarios**
-Feature: Correct CSV headers for contact export
+Feature: Transform contacts to CSV
 
-Scenario: Return CSV headers for export
-Given an authenticated user with contacts
-When calling GET /contacts/export with `Accept: text/csv`
-Then the application responds with `Content-Type: text/csv` and a `Content-Disposition` header for a CSV filename
+Scenario: Transform contacts to valid CSV
+  Given ExportReadModel with 5 contacts
+  When transformer converts to CSV
+  Then valid RFC 4180 CSV is produced
+  And header row contains field names
+  And each data row has matching fields
+
+Scenario: Handle special characters in CSV
+  Given a contact with name "Smith, John" and email "john@example.com"
+  When transformer converts to CSV
+  Then the name is properly escaped with quotes
+  And the CSV remains valid and parseable
+
+Scenario: Large export streams without memory issues
+  Given ExportReadModel with 10000 contacts
+  When transformer converts to CSV
+  Then streaming produces output without loading all rows in memory
+  And response completes successfully
+
+**Notes**
+- CSV serialization follows RFC 4180 standard
+- Special characters are escaped with double quotes
+- Large exports use streaming to minimize memory usage
 ```
+
+---
+
+## Example 2: ❌ BAD EXAMPLE - Insufficient Coverage
+
+### ❌ Domain Ticket (Incomplete - Missing Edge Cases)
+
+file `docs/features/order-status/domain_order-status.md`
+```markdown
+# Update Order Status : Domain Module
+
+**Context**
+Orders need to transition between states.
+
+**Problem**
+Domain must support status transitions.
+
+**Acceptance Criteria**
+- Order status can be updated
+- Status transitions are persisted
+
+**Implementation Plan**
+1. Add status field to Order
+2. Add updateStatus method
+
+**Gherkin Scenarios**
+Feature: Update order status
+
+Scenario: Update order status
+  Given an order
+  When status is updated to READY
+  Then status is READY
+
+**Notes**
+None
+```
+
+**Problems with this example:**
+- ❌ Only 1 scenario (happy path only)
+- ❌ Missing error cases: What if status invalid? What if order not found?
+- ❌ Missing edge cases: What if status transition is illegal?
+- ❌ Missing state verification: Are other fields affected?
+- ❌ No timestamp verification: When was it updated?
+- ❌ Too vague: "an order" - no concrete ID or state
+- ❌ Implementation plan is trivial - no specifics
+
+**How to improve:**
+- Add 3-4 error scenarios (not found, invalid transition, etc.)
+- Add edge case (null status, empty string)
+- Verify persistence and timestamps
+- Verify state machine rules (e.g., PENDING → ACKNOWLEDGED → READY, but not READY → PENDING)
+- Add concrete example data
