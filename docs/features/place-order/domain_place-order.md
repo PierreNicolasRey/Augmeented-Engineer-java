@@ -12,8 +12,9 @@ An order costs tokens: drinks consume drink tokens, food items consume snack tok
 The Domain module requires rich business models to represent orders with proper validation of:
 1. Item types (drinks, snacks, meals) with their respective costs
 2. Multiple items in a single order
-3. Token balance validation before order placement
-4. Order state management
+3. Token availability validation before order placement (against available tokens, not total)
+4. Token reservation when order is placed
+5. Order state management
 
 **Acceptance Criteria**
 - [ ] `DrinkType` enum created with: `NON_ALCOHOLIC` (0 tokens), `NORMAL_ALCOHOLIC` (1 token), `PREMIUM_ALCOHOLIC` (2 tokens)
@@ -27,16 +28,17 @@ The Domain module requires rich business models to represent orders with proper 
   - `totalDrinkTokensCost` and `totalSnackTokensCost` calculated properties
 - [ ] `PlaceOrderUseCase` created for order creation:
   - Validates order items are not empty
-  - Loads festival goer's current token balance
+  - Loads festival goer's current token balance (including reserved tokens)
   - Calculates total cost per token type
-  - Validates total cost does not exceed balance
-  - Deducts tokens from festival goer's balance
+  - Validates total cost does not exceed **available** tokens (via `tokenBalance.canReserve()`)
+  - **Reserves** tokens in festival goer's balance (does NOT deduct yet)
   - Persists order and updated balance
   - Raises domain events (e.g., `OrderPlacedEvent`)
 - [ ] Invariants:
   - Order must contain at least 1 item
-  - Order cost cannot exceed festival goer's available tokens (separately for drink and food)
-  - Tokens are deducted immediately upon order placement
+  - Order cost cannot exceed festival goer's **available** tokens (separately for drink and food)
+  - Tokens are reserved immediately upon order placement
+  - Tokens are only deducted when order is acknowledged (separate feature)
   - Order state transitions are unidirectional and well-defined
 - [ ] No framework-specific annotations in Domain models
 - [ ] Full test coverage for models, value objects, and use case (unit tests)
@@ -60,29 +62,29 @@ The Domain module requires rich business models to represent orders with proper 
    - Fields: `orderId: OrderId`, `festivalGoerId: FestivalGoerId`, `items: List<OrderItem>`, `status: OrderStatus`
    - Method: `getTotalDrinkTokensCost(): int` (sum of drink items)
    - Method: `getTotalSnackTokensCost(): int` (sum of food items)
-   - Method: `validateAgainstBalance(TokenBalance)` (throws exception if insufficient)
+   - Method: `validateAgainstAvailableBalance(TokenBalance)` (throws exception if insufficient available tokens)
    - Method: `getItems(): List<OrderItem>` (unmodifiable)
    
 5. Create `OrderStatus` enum: `PENDING`, `ACKNOWLEDGED`, `READY`, `CANCELLED`
    
 6. Create `PlaceOrderUseCase` in `usecases` package:
-   - Inject: `FestivalGoerRepository` (port), `OrderRepository` (port), `EventPublisherPort` (port)
+   - Inject: `TokenBalanceRepository` (port), `OrderRepository` (port), `EventPublisherPort` (port)
    - Method: `execute(PlaceOrderRequest): PlaceOrderResponse`
    - Steps:
-     a. Load festival goer by ID
-     b. Load festival goer's token balance
-     c. Create Order with provided items
-     d. Validate order against balance
-     e. Deduct tokens from balance (update TokenBalance)
-     f. Persist order
-     g. Persist updated token balance
-     h. Publish `OrderPlacedEvent` with order ID and status
-     i. Return order ID
+     a. Load festival goer's token balance via TokenBalanceRepository
+     b. Create Order with provided items
+     c. Validate order against **available** balance using `tokenBalance.canReserve()`
+     d. **Reserve** tokens in balance (update TokenBalance with new reserved values)
+     e. Persist order via OrderRepository
+     f. Persist updated token balance via TokenBalanceRepository
+     g. Publish `OrderPlacedEvent` with order ID and status
+     h. Return order ID
    
 7. Define outbound ports in `ports` package:
    - `OrderRepository` with methods: `save(Order)`, `findById(OrderId)`
-   - `FestivalGoerRepository` extend existing with methods for balance updates
+   - `TokenBalanceRepository` (used by this UseCase) with methods: `findTokenBalanceByFestivalGoerId(FestivalGoerId)`, `saveTokenBalance(FestivalGoerId, TokenBalance)`
    - `EventPublisherPort` with `publish(DomainEvent)`
+   - Note: `TokenBalanceRepository` is defined and implemented in the "Consult Token Balance" feature ticket
    
 8. Create domain event `OrderPlacedEvent`:
    - Fields: `orderId`, `festivalGoerId`, `totalDrinkTokensCost`, `totalSnackTokensCost`, `timestamp`
@@ -113,7 +115,7 @@ Scenario: Place order with single normal alcoholic drink
   Then an Order is created with status PENDING
   And the order contains 1 drink item
   And the total drink token cost is 1
-  And the festival goer's drink tokens are deducted to 5
+  And the festival goer's drink tokens are reserved (1 reserved, 5 available)
 
 Scenario: Place order with premium alcoholic drinks
   Given a festival goer with ID "fgv-001"
@@ -122,7 +124,7 @@ Scenario: Place order with premium alcoholic drinks
   Then an Order is created with status PENDING
   And the order contains 2 drink items
   And the total drink token cost is 4
-  And the festival goer's drink tokens are deducted to 2
+  And the festival goer's drink tokens are reserved (4 reserved, 2 available)
 
 Scenario: Place order with snacks
   Given a festival goer with ID "fgv-001"
@@ -131,7 +133,7 @@ Scenario: Place order with snacks
   Then an Order is created with status PENDING
   And the order contains 3 food items
   And the total snack token cost is 3
-  And the festival goer's snack tokens are deducted to 6
+  And the festival goer's snack tokens are reserved (3 reserved, 6 available)
 
 Scenario: Place order with meals
   Given a festival goer with ID "fgv-001"
@@ -140,7 +142,7 @@ Scenario: Place order with meals
   Then an Order is created with status PENDING
   And the order contains 2 food items
   And the total snack token cost is 6
-  And the festival goer's snack tokens are deducted to 3
+  And the festival goer's snack tokens are reserved (6 reserved, 3 available)
 
 Scenario: Place mixed order with drinks and food
   Given a festival goer with ID "fgv-001"
@@ -155,8 +157,8 @@ Scenario: Place mixed order with drinks and food
   And the order contains 6 items
   And the total drink token cost is 2
   And the total snack token cost is 5
-  And the festival goer's drink tokens are deducted to 4
-  And the festival goer's snack tokens are deducted to 4
+  And the festival goer's drink tokens are reserved (2 reserved, 4 available)
+  And the festival goer's snack tokens are reserved (5 reserved, 4 available)
 
 Scenario: Order rejected due to insufficient drink tokens
   Given a festival goer with ID "fgv-001"
@@ -203,5 +205,5 @@ Scenario: Order placement publishes OrderPlacedEvent
 - Ticket covers only Domain layer (models and use case).
 - Order state management is kept simple at this stage; state transitions for acknowledge, ready, cancel are handled in separate features.
 - Outbound Port `OrderRepository` will be implemented in Infrastructure module.
-- Token deduction happens synchronously during order placement (no event-driven deduction).
+- **Token reservation** happens synchronously during order placement (tokens are reserved, not deducted). Token deduction happens when order is acknowledged (separate feature).
 - Order items are immutable once placed (changes require separate "Change Order" feature).

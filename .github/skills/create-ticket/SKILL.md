@@ -14,7 +14,7 @@ description: Create a ticket in the form of a markdown file with title, descript
     5. Create the ticket in the `docs/{ticket_type}/{feature_name}/{module_name}_{ticket_title}.md` file using the `templates/ticket.md` template.
        - Use `ticket_type = issues` for bug tickets.
        - Use `ticket_type = features` for feature tickets.
-    6. Validate the ticket using `scripts/validate_ticket_format.py`.
+    6. ALWAYS validate the ticket using `scripts/validate_ticket_format.py`.
     
 # Note
 - This skill is intended to create manageable tickets. Typically, it should not span more than one module. 
