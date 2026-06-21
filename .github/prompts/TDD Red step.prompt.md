@@ -21,21 +21,24 @@ model: Claude Haiku 4.5 (copilot)
     - for the domain module, follow the guidelines in `docs/agents/instructions/testing/domain-testing.instructions.md`
     - for the application module, follow the guidelines in `docs/agents/instructions/testing/application-testing.instructions.md`
     - for the infrastructure module, follow the guidelines in `docs/agents/instructions/testing/infrastructure-testing.instructions.md`
-4. If the test triggers compilation errors because the target production classes, interfaces, or methods do not exist yet, you MUST create their empty skeletons (stubs) in the main production source tree (`src/main/java`). 
-   - Skeletons must contain ONLY the class/interface declaration and empty method signatures (returning default values like `null`, `0`, or throwing `UnsupportedOperationException`).
-   - Do NOT implement any business logic.
-5. If the test needs a Fake implementation, create a new Fake class in the appropriate directory structure based on the module (domain, application, infrastructure) and implement the necessary methods to support the test case. Do **NOT** implement the Fake inside the test file itself.
-6. Run the test to confirm it compiles and fails.
+4. If the test triggers compilation errors because target classes, interfaces, enums, or methods do not exist, you MUST create their empty structural skeletons in `src/main/java`.
+   - **STRICT SYNTAX FOR SKELETONS**:
+     - **Classes**: Must only contain fields required for dependency injection (constructors), and method signatures.
+     - **Methods**: Body must contain EXACTLY `throw new UnsupportedOperationException("Not implemented yet");` (or return `null`/`0` if primitive, but throwing is preferred).
+     - **Enums**: Must be strictly empty or contain only a single dummy value required to compile the test. **NEVER** anticipate or list all possible enum values.
+     - **NO LOGICAL STATEMENTS**: No `if`, `for`, `switch`, assignments, or computed returns are allowed in `src/main/java`.
+5. If the test needs a Fake implementation, create a new Fake class in the appropriate directory structure of the test tree (`src/test/java`) and implement the necessary methods to support the test case. Do **NOT** implement the Fake inside the test file itself.
+6. Run the test to confirm it compiles and fails with an explicit failure (e.g., `UnsupportedOperationException` or assertion failure).
 
 ## Requirements
 - You **MUST** follow the guidelines for the module you are currently working on.
-- **CRITICAL** **NEVER** implement any production logic or business features in this step. Skeletons and structural method signatures created in `src/main/java` purely to resolve Java compilation errors are **NOT** considered production logic. Your ONLY goal is to achieve a compiling project with a failing test (RED execution).
-- You **MUST** ensure the test fails when executed. 
+- **CRITICAL / RED RULE**: You are strictly FORBIDDEN from implementing any production code or business logic in `src/main/java`. Skeletons created purely to fix compilation errors must be completely devoid of logic, data structures, or multi-valued enums. If a method does more than throwing an exception or returning a dummy value, you have failed this step.
+- You **MUST** ensure the test fails when executed. A successful compilation that does not execute tests or passes them is an absolute failure.
 - The name of the test method should be descriptive and follow the naming conventions outlined in the testing guidelines.
 
 ## Examples
 
-### Domain test example : file does not yet exist
+### Domain test example : files do not yet exist
 
 Input : 
 Scenario Description: Scenario: Successfully export contacts
@@ -45,8 +48,34 @@ Then the system retrieves all 20 contacts and generates an export DTO
 
 Expected Output : 
 
-- a new file `domain/src/test/java/com/example/domain/contact/ContactExportUseCaseTest.java` is created with the following content : 
+1. A new file `domain/src/test/java/com/example/domain/contact/ContactExportUseCaseTest.java` is created with the test case.
+2. Skeletons are generated in `domain/src/main/java/...` **ONLY** to fix compilation. They look EXACTLY like this:
 
+`domain/src/main/java/com/example/domain/contact/ContactExportUseCase.java`:
+```java
+package com.example.domain.contact;
+
+public class ContactExportUseCase {
+    public ContactExportDto execute(ExportContactQuery query) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+}
+```
+
+`domain/src/main/java/com/example/domain/contact/ContactExportDto.java`:
+```java
+package com.example.domain.contact;
+
+import java.util.List;
+
+public class ContactExportDto {
+    public List<Object> getContacts() {
+        return null; // Minimal structure to satisfy the test's assertThat(.hasSize()) compilation
+    }
+}
+```
+
+`domain/src/test/java/com/example/domain/contact/ContactExportUseCaseTest.java`:
 ```java
 package com.example.domain.contact;
 
@@ -75,7 +104,7 @@ class ContactExportUseCaseTest {
         // Given a user with 20 contacts
         TestState<User> userTestState = fixture.getUserTestState();
         TestState<Contact> contactTestState = fixture.getContactTestState();
-        UseCaseHandler<ExportContactQuery, ContactExportDto> handler = fixture.getUseCaseHandler();
+        ContactExportUseCase useCase = new ContactExportUseCase();
         
         User user = new User("user1");
         userTestState.add(user);
@@ -86,7 +115,7 @@ class ContactExportUseCaseTest {
 
         // When executing a query to fetch contacts
         ExportContactQuery query = new ExportContactQuery(user.getId());
-        ContactExportDto exportDto = handler.execute(query);
+        ContactExportDto exportDto = useCase.execute(query);
 
         // Then the system retrieves all 20 contacts and generates an export DTO
         assertThat(exportDto).isNotNull();
