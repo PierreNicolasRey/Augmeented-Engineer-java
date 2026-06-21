@@ -25,8 +25,8 @@ model: Claude Haiku 4.5 (copilot)
 
 3. **Write the test first:**
    - Write ONLY the test code that directly reflects the scenario's Given-When-Then.
-   - Follow [testing-guidelines.md](../../docs/agents/instructions/testing/testing-guidelines.md) for structure and naming.
-   - For your specific layer, consult: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md), [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md), or [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md).
+   - **CRITICAL** **ALWAYS** follow [testing-guidelines.md](../../docs/agents/instructions/testing/testing-guidelines.md) for structure and naming.
+   - **CRITICAL** **ALWAYS** For your specific layer, consult: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md), [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md), or [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md).
    - **The test will fail because production code is missing.**
 
 4. **Create ONLY structural skeletons in `src/main/java` to fix compilation errors.**
@@ -77,11 +77,12 @@ model: Claude Haiku 4.5 (copilot)
   - Do not create builder patterns, factory classes, or utility wrappers.
   - **Violation example**: Creating `OrderPlacedEvent` or `PlaceOrderRequest` or `PlaceOrderResponse` when the test uses simple parameters is over-engineering.
 
-- **ABSOLUTE: Follow the module testing guidelines.**
-  - Domain tests: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md) (Fakes, no Spring)
-  - Application tests: [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md) (@WebMvcTest, MockMvc, mock UseCases)
+- **ABSOLUTE: Follow the module testing guidelines BEFORE writing ANY test code.**
+  - Domain tests: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md) (Fakes, no Spring, pure unit tests)
+  - **Application tests (REST endpoints):** [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md)
+    - **NEVER test controller directly** (`controller.method()` is wrong). Always test via MockMvc HTTP calls.
   - Infrastructure tests: [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md) (Testcontainers, adapters, mappers)
-  - Use the test pattern, naming conventions, and assertion styles defined in each guideline.
+  - Use the test pattern, naming conventions, and assertion styles defined in each guideline. Violation = test failure.
 
 - **ABSOLUTE: The test MUST fail when executed.**
   - Compilation success ≠ RED success. The test must execute and fail (throw exception or assertion error).

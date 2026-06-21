@@ -59,6 +59,22 @@ During REFACTOR, we extract inner classes from the test file to production modul
 
 ### Core Refactor Principles
 
+**CRITICAL CLEANUP REQUIREMENT:**
+- ❌ Remove ALL Javadoc that describes phases ("GREEN phase test", "RED phase", "extract from test", etc.)
+- ❌ Remove ALL comments that don't add value (generic explanations of what the code does)
+- ❌ Remove unused imports
+- ✅ Keep ONLY comments that explain complex business logic or non-obvious architectural decisions
+- ✅ Keep comments that clarify **why** something is done, not what it does
+
+**CRITICAL CONTROLLER REQUIREMENT:**
+- Controllers are **THIN LAYERS ONLY**: Receive HTTP request → Delegate to Use Case → Return HTTP response
+- ❌ NO validation logic in controller (validation is in Domain Use Cases)
+- ❌ NO business calculations or transformations in controller
+- ❌ NO direct repository access from controller
+- ❌ NO state mutations or side-effects
+- ✅ Controller receives DTOs → Maps to Domain objects → Calls Use Case → Gets Domain result → Maps to Response DTO
+- Exception handling is delegated to `GlobalErrorHandler` (in Application layer config), NOT in controller method
+
 1. **Extract inner classes to appropriate production files** (one per step)
    - Value Objects and Entities → `domain/src/main/java/com/it/exalt/belair/domain/[module]/model/`
    - Use Cases → `domain/src/main/java/com/it/exalt/belair/domain/[module]/usecases/`

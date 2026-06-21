@@ -11,6 +11,22 @@ plugins {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":infrastructure"))
+    
+    // Spring Web for REST controllers (3.5.x LTS)
+    implementation("org.springframework.boot:spring-boot-starter-web:3.5.2")
+    
+    // Spring Test for @WebMvcTest and MockMvc (3.5.x LTS)
+    testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.2") {
+        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+    }
+    testImplementation("org.springframework:spring-test:6.2.2")
+    testImplementation("org.springframework.boot:spring-boot-test:3.5.2")
+    testImplementation("org.springframework.boot:spring-boot-test-autoconfigure:3.5.2")
+    testImplementation("org.springframework.boot:spring-boot:3.5.2")
+    
+    // Mockito for mocking
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.11.0")
 }
 
 application {
