@@ -101,7 +101,10 @@ Provide:
   - The test is the specification. Treat it as immutable.
   - If the test seems wrong, flag it and ask (use ⚠️ emoji), but do not modify it.
 
-- **ABSOLUTE: Follow the module testing guidelines** (domain-testing-guidelines.md, etc.) for assertions and patterns.
+- **ABSOLUTE: Follow the module testing guidelines** for assertions and patterns:
+  - Domain tests: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md)
+  - Application tests: [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md) (@WebMvcTest, MockMvc)
+  - Infrastructure tests: [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md) (Testcontainers, adapters)
 
 - **ABSOLUTE: The test MUST pass when executed.**
   - If the test still fails, keep implementing until it passes.
@@ -243,6 +246,195 @@ class PlaceOrderUseCaseTest {
 - All assertions succeed ✓
 - Zero over-engineering ✓
 - All implementation stays in `src/test/java` ✓
+
+---
+
+### Application Layer Example: POST /api/orders Endpoint (GREEN)
+
+**Test file** `application/src/test/java/com/it/exalt/belair/application/order/rest/PlaceOrderControllerTest.java`:
+
+Inner classes written inside test during GREEN (everything in test):
+
+```java
+@WebMvcTest
+class PlaceOrderControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @MockBean private PlaceOrderUseCase placeOrderUseCase;
+    
+    private static final String ORDERS_ENDPOINT = "/api/orders";
+    
+    @Test
+    void post_shouldReturn201_whenOrderIsValid() throws Exception {
+        // GIVEN a valid order request
+        var request = """{"festivalGoerId": "fgv-001", "items": [], "drinkTokens": 6, "snackTokens": 9}""";
+        var mockOrder = new Order("order-1", "fgv-001");
+        given(placeOrderUseCase.placeOrder(any())).willReturn(mockOrder);
+        
+        // WHEN & THEN
+        mockMvc.perform(post(ORDERS_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+            .andExpect(status().isCreated());
+    }
+    
+    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW ============
+    
+    @RestController
+    @RequestMapping("/api/orders")
+    static class PlaceOrderController {
+        private final PlaceOrderUseCase placeOrderUseCase;
+        
+        PlaceOrderController(PlaceOrderUseCase placeOrderUseCase) {
+            this.placeOrderUseCase = placeOrderUseCase;
+        }
+        
+        @PostMapping
+        ResponseEntity<PlaceOrderResponse> post(@RequestBody PlaceOrderRequest request) {
+            // Minimal: just call use case and map response
+            var order = placeOrderUseCase.placeOrder(request.festivalGoerId());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new PlaceOrderResponse(order.id(), order.festivalGoerId()));
+        }
+    }
+    
+    record PlaceOrderRequest(
+        String festivalGoerId,
+        List<?> items,
+        int drinkTokens,
+        int snackTokens
+    ) {}
+    
+    record PlaceOrderResponse(String orderId, String festivalGoerId) {}
+    
+    // Mock Order from Domain (inner class for test)
+    static class Order {
+        private String id;
+        private String festivalGoerId;
+        
+        Order(String id, String festivalGoerId) {
+            this.id = id;
+            this.festivalGoerId = festivalGoerId;
+        }
+        
+        String id() { return id; }
+        String festivalGoerId() { return festivalGoerId; }
+    }
+}
+```
+
+**Key points:**
+- All code (controller, DTOs, mappers) in inner classes inside test
+- Spring annotations included (`@RestController`, `@PostMapping`, `@RequestMapping`)
+- `PlaceOrderUseCase` mocked via `@MockBean` 
+- Minimal response mapping (no separate mapper yet)
+- Test passes ✓
+- All implementation stays in `src/test/java` ✓
+
+---
+
+### Infrastructure Layer Example: Order Persistence Adapter (GREEN)
+
+**Test file** `infrastructure/src/test/java/com/it/exalt/belair/infrastructure/order/persistence/OrderRepositoryAdapterIntegrationTest.java`:
+
+Inner classes written inside test during GREEN:
+
+```java
+@Testcontainers
+class OrderRepositoryAdapterIntegrationTest {
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
+    
+    @Autowired private OrderRepositoryAdapter sut;
+    
+    @Test
+    void save_shouldPersistOrderAndRetrieveItCorrectly() {
+        // GIVEN a domain order
+        var order = new Order("order-1", "fgv-001");
+        
+        // WHEN
+        sut.save(order);
+        
+        // THEN
+        var retrieved = sut.find("order-1");
+        assertThat(retrieved).isPresent()
+            .get()
+            .satisfies(o -> assertThat(o.id()).isEqualTo("order-1"));
+    }
+    
+    // ============ PRODUCTION CODE BELOW (inner classes) ============
+    
+    @Repository
+    class OrderRepositoryAdapter {
+        private final JpaOrderRepository jpaRepository;
+        private final OrderMapper mapper;
+        
+        OrderRepositoryAdapter(JpaOrderRepository jpaRepository, OrderMapper mapper) {
+            this.jpaRepository = jpaRepository;
+            this.mapper = mapper;
+        }
+        
+        void save(Order order) {
+            var entity = mapper.toEntity(order);
+            jpaRepository.save(entity);
+        }
+        
+        Optional<Order> find(String orderId) {
+            return jpaRepository.findById(orderId)
+                .map(mapper::toDomain);
+        }
+    }
+    
+    @Entity
+    @Table(name = "orders")
+    class OrderJpaEntity {
+        @Id String id;
+        @Column String festivalGoerId;
+        
+        OrderJpaEntity() {}
+        OrderJpaEntity(String id, String festivalGoerId) {
+            this.id = id;
+            this.festivalGoerId = festivalGoerId;
+        }
+        
+        String id() { return id; }
+        String festivalGoerId() { return festivalGoerId; }
+    }
+    
+    @Component
+    class OrderMapper {
+        OrderJpaEntity toEntity(Order domain) {
+            return new OrderJpaEntity(domain.id(), domain.festivalGoerId());
+        }
+        
+        Order toDomain(OrderJpaEntity entity) {
+            return new Order(entity.id(), entity.festivalGoerId());
+        }
+    }
+    
+    @Repository
+    interface JpaOrderRepository extends JpaRepository<OrderJpaEntity, String> {}
+    
+    static class Order {  // Minimal domain model
+        String id;
+        String festivalGoerId;
+        Order(String id, String festivalGoerId) {
+            this.id = id;
+            this.festivalGoerId = festivalGoerId;
+        }
+        String id() { return id; }
+        String festivalGoerId() { return festivalGoerId; }
+    }
+}
+```
+
+**Key points:**
+- All adapter, entity, mapper code as inner classes in test (will be extracted in REFACTOR)
+- Testcontainers setup minimal (only what test needs)
+- `OrderMapper` maps domain ↔ entity bidirectionally (minimal logic only)
+- JPA annotations (`@Entity`, `@Table`, `@Column`, `@Id`) included
+- Spring `@Repository`, `@Component` included (even in test inner classes)
+- Mapper logic is ultra-minimal (just field assignment)
+- No validation, no complex transformations (test doesn't require)
 
 ---
 

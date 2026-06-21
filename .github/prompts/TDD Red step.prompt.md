@@ -25,7 +25,8 @@ model: Claude Haiku 4.5 (copilot)
 
 3. **Write the test first:**
    - Write ONLY the test code that directly reflects the scenario's Given-When-Then.
-   - Use the testing guidelines for your module (domain-testing-guidelines.md, etc.).
+   - Follow [testing-guidelines.md](../../docs/agents/instructions/testing/testing-guidelines.md) for structure and naming.
+   - For your specific layer, consult: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md), [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md), or [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md).
    - **The test will fail because production code is missing.**
 
 4. **Create ONLY structural skeletons in `src/main/java` to fix compilation errors.**
@@ -76,8 +77,11 @@ model: Claude Haiku 4.5 (copilot)
   - Do not create builder patterns, factory classes, or utility wrappers.
   - **Violation example**: Creating `OrderPlacedEvent` or `PlaceOrderRequest` or `PlaceOrderResponse` when the test uses simple parameters is over-engineering.
 
-- **ABSOLUTE: Follow the module testing guidelines** (domain-testing-guidelines.md, application-testing-guidelines.md, etc.).
-  - Use the test pattern, naming conventions, and assertion styles defined there.
+- **ABSOLUTE: Follow the module testing guidelines.**
+  - Domain tests: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md) (Fakes, no Spring)
+  - Application tests: [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md) (@WebMvcTest, MockMvc, mock UseCases)
+  - Infrastructure tests: [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md) (Testcontainers, adapters, mappers)
+  - Use the test pattern, naming conventions, and assertion styles defined in each guideline.
 
 - **ABSOLUTE: The test MUST fail when executed.**
   - Compilation success ≠ RED success. The test must execute and fail (throw exception or assertion error).
@@ -99,23 +103,12 @@ Scenario: Place order with single normal alcoholic drink
   And the festival goer's drink tokens are reserved (1 reserved, 5 available)
 ```
 
-**Expected Output in RED phase: Minimal skeletons only, no anticipation.**
+**Test file** `domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java`:
 
-**1. Test file** `domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java`:
+All code (enums, classes, use case) as inner classes inside test:
+
 ```java
-package com.it.exalt.belair.domain.order.usecases;
-
-import com.it.exalt.belair.domain.order.model.Order;
-import com.it.exalt.belair.domain.order.model.OrderItem;
-import com.it.exalt.belair.domain.order.model.DrinkType;
-import com.it.exalt.belair.domain.order.model.OrderStatus;
-import com.it.exalt.belair.domain.order.model.FestivalGoerBalance;
-import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
-
 class PlaceOrderUseCaseTest {
-    
-    private PlaceOrderUseCase sut;  // System Under Test
     
     @Test
     void placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNormalAlcoholicDrink() {
@@ -125,7 +118,7 @@ class PlaceOrderUseCaseTest {
         var balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 1 normal alcoholic drink
-        sut = new PlaceOrderUseCase();
+        var sut = new PlaceOrderUseCase();
         var item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 1);
         Order order = sut.placeOrder(festivalGoerId, item, balance);
         
@@ -137,92 +130,225 @@ class PlaceOrderUseCaseTest {
         // And the total drink token cost is 1
         assertThat(order.getDrinkTokenCost()).isEqualTo(1);
     }
-}
-```
-
-**2. Skeleton classes in `src/main/java`:**
-
-`domain/src/main/java/com/it/exalt/belair/domain/order/model/DrinkType.java`:
-```java
-package com.it.exalt.belair.domain.order.model;
-
-public enum DrinkType {
-    NORMAL_ALCOHOLIC;  // Only this value; do NOT add NON_ALCOHOLIC, PREMIUM yet.
-}
-```
-
-`domain/src/main/java/com/it/exalt/belair/domain/order/model/OrderStatus.java`:
-```java
-package com.it.exalt.belair.domain.order.model;
-
-public enum OrderStatus {
-    PENDING;  // Only this value. Do NOT add ACKNOWLEDGED, READY, CANCELLED.
-}
-```
-
-`domain/src/main/java/com/it/exalt/belair/domain/order/model/OrderItem.java`:
-```java
-package com.it.exalt.belair.domain.order.model;
-
-public record OrderItem(DrinkType drinkType, int quantity) {
-    public static OrderItem createDrinkItem(DrinkType type, int quantity) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    
+    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW ============
+    
+    enum DrinkType {
+        NORMAL_ALCOHOLIC  // Only this value referenced in test
+    }
+    
+    enum OrderStatus {
+        PENDING  // Only this value referenced in test
+    }
+    
+    record OrderItem(DrinkType drinkType, int quantity) {
+        static OrderItem createDrinkItem(DrinkType type, int quantity) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    static class Order {
+        OrderStatus getStatus() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        int getItemCount() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        int getDrinkTokenCost() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    record FestivalGoerBalance(int drinkTokens, int snackTokens) {}
+    
+    static class PlaceOrderUseCase {
+        Order placeOrder(String festivalGoerId, OrderItem item, FestivalGoerBalance balance) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
     }
 }
 ```
 
-`domain/src/main/java/com/it/exalt/belair/domain/order/model/Order.java`:
-```java
-package com.it.exalt.belair.domain.order.model;
-
-public class Order {
-    public OrderStatus getStatus() {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    public int getItemCount() {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    public int getDrinkTokenCost() {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-}
-```
-
-`domain/src/main/java/com/it/exalt/belair/domain/order/model/FestivalGoerBalance.java`:
-```java
-package com.it.exalt.belair.domain.order.model;
-
-public record FestivalGoerBalance(int drinkTokens, int snackTokens) {
-}
-```
-
-`domain/src/main/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCase.java`:
-```java
-package com.it.exalt.belair.domain.order.usecases;
-
-import com.it.exalt.belair.domain.order.model.Order;
-import com.it.exalt.belair.domain.order.model.OrderItem;
-import com.it.exalt.belair.domain.order.model.FestivalGoerBalance;
-
-public class PlaceOrderUseCase {
-    public Order placeOrder(String festivalGoerId, OrderItem item, FestivalGoerBalance balance) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-}
-```
-
-**What is NOT created in RED:**
-- ❌ `OrderRepository` interface (test doesn't import it).
-- ❌ `TokenBalanceRepository` interface (test doesn't need persistence yet).
-- ❌ `EventPublisherPort` interface (test doesn't publish events).
-- ❌ `OrderPlacedEvent` class (test doesn't assert events).
-- ❌ `PlaceOrderRequest` or `PlaceOrderResponse` (test uses simple parameters).
-- ❌ Mapper classes (no mapping needed in RED).
-- ❌ Builder patterns, factory utilities, or DSLs.
-
-**Execution result:**
+**Key points:**
+- All code (enums, records, classes, use case) in inner classes inside test
+- Enums contain ONLY values referenced in test (`NORMAL_ALCOHOLIC`, `PENDING`)
+- Classes contain ONLY methods called by test
+- No files created in `src/main/java` — everything in test ✓
 - Test compiles ✓
 - Test runs and fails: `UnsupportedOperationException: Not implemented yet` ✓
-- No production logic exists ✓
+- All code extraction happens in REFACTOR phase ✓
+
+**What is NOT created in RED:**
+- ❌ `OrderRepository` interface (test doesn't import it)
+- ❌ `TokenBalanceRepository` interface (test doesn't need persistence yet)
+- ❌ `EventPublisherPort` interface (test doesn't publish events)
+- ❌ `OrderPlacedEvent` class (test doesn't assert events)
+- ❌ Mapper classes (no mapping needed in RED)
+- ❌ Builder patterns, factory utilities, or DSLs
+
+---
+
+### Application Layer Example: POST /api/orders Endpoint (RED)
+
+**Test file** `application/src/test/java/com/it/exalt/belair/application/order/rest/PlaceOrderControllerTest.java`:
+
+Everything in inner classes inside the test (NO files in src/main/java):
+
+```java
+@WebMvcTest
+class PlaceOrderControllerTest {
+    @Autowired private MockMvc mockMvc;
+    @MockBean private PlaceOrderUseCase placeOrderUseCase;
+    
+    private static final String ORDERS_ENDPOINT = "/api/orders";
+    
+    @Test
+    void post_shouldReturn201_whenOrderIsValid() throws Exception {
+        // GIVEN a valid order request
+        var request = """{"festivalGoerId": "fgv-001", "items": [], "drinkTokens": 6, "snackTokens": 9}""";
+        var mockOrder = new Order("order-1", "fgv-001");
+        given(placeOrderUseCase.placeOrder(any())).willReturn(mockOrder);
+        
+        // WHEN posting the request
+        // THEN expect 201 Created
+        mockMvc.perform(post(ORDERS_ENDPOINT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+            .andExpect(status().isCreated());
+    }
+    
+    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW ============
+    
+    @RestController
+    @RequestMapping("/api/orders")
+    static class PlaceOrderController {
+        private final PlaceOrderUseCase placeOrderUseCase;
+        
+        PlaceOrderController(PlaceOrderUseCase placeOrderUseCase) {
+            this.placeOrderUseCase = placeOrderUseCase;
+        }
+        
+        @PostMapping
+        ResponseEntity<PlaceOrderResponse> post(@RequestBody PlaceOrderRequest request) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    record PlaceOrderRequest(
+        String festivalGoerId,
+        List<?> items,
+        int drinkTokens,
+        int snackTokens
+    ) {}
+    
+    record PlaceOrderResponse(String orderId, String status) {}
+    
+    // Mock Order from Domain (inner class for test)
+    static class Order {
+        private String id;
+        private String festivalGoerId;
+        
+        Order(String id, String festivalGoerId) {
+            this.id = id;
+            this.festivalGoerId = festivalGoerId;
+        }
+        
+        String id() { return id; }
+        String festivalGoerId() { return festivalGoerId; }
+    }
+}
+```
+
+**What is created in src/main/java:**
+- ❌ **NOTHING** — all code in test inner classes
+- The test compiles ✓
+- The test runs and fails: `UnsupportedOperationException: Not implemented yet` ✓
+
+---
+
+### Infrastructure Layer Example: Order Persistence Adapter (RED)
+
+**Test file** `infrastructure/src/test/java/com/it/exalt/belair/infrastructure/order/persistence/OrderRepositoryAdapterIntegrationTest.java`:
+
+Everything in inner classes inside the test (NO files in src/main/java):
+
+```java
+@Testcontainers
+class OrderRepositoryAdapterIntegrationTest {
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
+    
+    @Test
+    void save_shouldPersistOrderAndRetrieveItCorrectly() {
+        // GIVEN a domain order (mock)
+        var order = new Order("order-1", "fgv-001");
+        
+        // WHEN saving via adapter (inner class)
+        var adapter = new OrderRepositoryAdapter();
+        adapter.save(order);
+        
+        // THEN it should be retrievable
+        var retrieved = adapter.find("order-1");
+        assertThat(retrieved).isPresent();
+    }
+    
+    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW ============
+    
+    static class OrderRepositoryAdapter {
+        private final JpaOrderRepository jpaRepository = null;  // Minimal: not initialized
+        
+        void save(Order order) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        Optional<Order> find(String orderId) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    @Entity
+    @Table(name = "orders")
+    static class OrderJpaEntity {
+        @Id String id;
+        @Column String festivalGoerId;
+        
+        // Minimal: no constructor, no getters
+    }
+    
+    static class OrderMapper {
+        OrderJpaEntity toEntity(Order domain) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        Order toDomain(OrderJpaEntity entity) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    interface JpaOrderRepository {
+        void save(OrderJpaEntity entity);
+        Optional<OrderJpaEntity> findById(String id);
+    }
+    
+    // Mock Order from Domain (inner class for test)
+    static class Order {
+        private String id;
+        private String festivalGoerId;
+        
+        Order(String id, String festivalGoerId) {
+            this.id = id;
+            this.festivalGoerId = festivalGoerId;
+        }
+        
+        String id() { return id; }
+        String festivalGoerId() { return festivalGoerId; }
+    }
+}
+```
+
+**What is created in src/main/java:**
+- ❌ **NOTHING** — all code in test inner classes
+- The test compiles ✓
+- The test runs and fails: `UnsupportedOperationException: Not implemented yet` ✓

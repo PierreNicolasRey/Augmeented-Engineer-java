@@ -89,8 +89,9 @@ The agent receives the **JSON output from the GREEN phase**, which contains:
 - `test_status`: Confirms test is PASSING
 
 The agent **automatically accesses**:
-- Architecture guidelines and package structure from AGENTS.md
-- Java coding conventions from `docs/agents/instructions/coding/java-coding-guidelines.md`
+- Architecture guidelines and package structure from [AGENTS.md](../../AGENTS.md)
+- Java coding conventions from [java-coding-guidelines.md](../../docs/agents/instructions/coding/java-coding-guidelines.md)
+- Code quality standards from [code-review-guidelines.md](../../docs/agents/instructions/coding/code-review-guidelines.md)
 - Existing project structure to determine correct locations
 
 **Example GREEN output (input to REFACTOR):**
@@ -292,14 +293,115 @@ class PlaceOrderUseCaseTest {
 - ✅ Test imports production classes by full package path
 - ✅ Separation of concerns: test tests behavior, production implements behavior
 
+---
+
+### Application Layer Refactoring Example
+
+**During GREEN:** All code (controller, DTOs) in inner classes inside test  
+**During REFACTOR:** Extract one by one to production files, test GREEN after each extraction
+
+**Before REFACTOR (test file contains):**
+```java
+@WebMvcTest
+class PlaceOrderControllerTest {
+    @Test void post_shouldReturn201_whenOrderIsValid() throws Exception { ... }
+    
+    @RestController
+    @RequestMapping("/api/orders")
+    static class PlaceOrderController { /* inner class implementation */ }
+    
+    record PlaceOrderRequest(String festivalGoerId, List<?> items, int drinkTokens, int snackTokens) {}
+    record PlaceOrderResponse(String orderId, String festivalGoerId) {}
+}
+```
+
+**REFACTOR Extraction Order:**
+1. `PlaceOrderRequest` → `application/src/main/java/.../order/dto/PlaceOrderRequest.java`
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+2. `PlaceOrderResponse` → `application/src/main/java/.../order/dto/PlaceOrderResponse.java`
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+3. `PlaceOrderController` → `application/src/main/java/.../order/rest/PlaceOrderController.java`
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+**After REFACTOR (all in production):**
+- `application/src/main/java/.../order/dto/PlaceOrderRequest.java`
+- `application/src/main/java/.../order/dto/PlaceOrderResponse.java`
+- `application/src/main/java/.../order/rest/PlaceOrderController.java`
+
+**Key principle:** Extract **one class at a time**, verify GREEN after each micro-step, then move to next.
+
+---
+
+### Infrastructure Layer Refactoring Example
+
+**During GREEN:** All code (adapter, entity, mapper) in inner classes inside test  
+**During REFACTOR:** Extract one by one to production files, test GREEN after each extraction
+
+**Before REFACTOR (test file contains):**
+```java
+@Testcontainers
+class OrderRepositoryAdapterIntegrationTest {
+    @Test void save_shouldPersistOrderAndRetrieveItCorrectly() { ... }
+    
+    @Repository
+    static class OrderRepositoryAdapter { /* inner class implementation */ }
+    
+    @Entity
+    @Table(name = "orders")
+    static class OrderJpaEntity { /* inner class implementation */ }
+    
+    @Component
+    static class OrderMapper { /* inner class implementation */ }
+    
+    interface JpaOrderRepository extends JpaRepository<OrderJpaEntity, String> {}
+}
+```
+
+**REFACTOR Extraction Order:**
+1. `OrderJpaEntity` → `infrastructure/src/main/java/.../order/persistence/OrderJpaEntity.java`
+   - No dependencies, extract first
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+2. `OrderMapper` → `infrastructure/src/main/java/.../order/persistence/OrderMapper.java`
+   - Depends on `OrderJpaEntity` (now in production)
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+3. `JpaOrderRepository` → `infrastructure/src/main/java/.../order/persistence/JpaOrderRepository.java`
+   - Depends on `OrderJpaEntity` (now in production)
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+4. `OrderRepositoryAdapter` → `infrastructure/src/main/java/.../order/persistence/OrderRepositoryAdapter.java`
+   - Depends on `OrderMapper` and `JpaOrderRepository` (now in production)
+   - Create file, add import to test, run test → GREEN ✅
+   - Delete inner class from test, run test → GREEN ✅
+
+**After REFACTOR (all in production):**
+- `infrastructure/src/main/java/.../order/persistence/OrderJpaEntity.java`
+- `infrastructure/src/main/java/.../order/persistence/OrderMapper.java`
+- `infrastructure/src/main/java/.../order/persistence/JpaOrderRepository.java`
+- `infrastructure/src/main/java/.../order/persistence/OrderRepositoryAdapter.java`
+
+**Key principle:** Extract **in dependency order** (bottom-up: no deps first, then those that depend on them). Verify GREEN after each micro-step.
+
+---
+
 ## Execution Checklist
 
 ### Pre-Extraction (One-Time Setup)
 - [ ] Read the complete GREEN test file end-to-end
 - [ ] List **ALL** inner classes with their types (enum, record, class)
 - [ ] Identify dependencies between classes (which classes depend on which)
-- [ ] Determine extraction order: enums → records → classes → use cases
-- [ ] Read team's Java coding guidelines from `docs/agents/instructions/coding/java-coding-guidelines.md`
+- [ ] Determine extraction order: enums → records → classes → adapters/repositories
+- [ ] Read team's Java coding guidelines from [java-coding-guidelines.md](../../docs/agents/instructions/coding/java-coding-guidelines.md)
+- [ ] Read code review standards from [code-review-guidelines.md](../../docs/agents/instructions/coding/code-review-guidelines.md)
 - [ ] Plan file structure and target locations for each class
 - [ ] **STOP here and confirm plan before starting extraction**
 
@@ -326,7 +428,8 @@ class PlaceOrderUseCaseTest {
 - [ ] All inner classes extracted to production files
 - [ ] Test file imports all classes from `src/main/java` (no inner classes)
 - [ ] All tests passing: `./gradlew domain:test --tests "ClassName"` → ✅ GREEN
-- [ ] Code follows team Java coding guidelines and complies with the code review guidelines.
+- [ ] Code follows [java-coding-guidelines.md](../../docs/agents/instructions/coding/java-coding-guidelines.md)
+- [ ] Code passes [code-review-guidelines.md](../../docs/agents/instructions/coding/code-review-guidelines.md) standards
 - [ ] Domain classes have NO framework annotations
 - [ ] All method signatures unchanged
 - [ ] All test assertions unchanged
@@ -338,7 +441,8 @@ After completing REFACTOR phase, confirm:
 - ✅ All inner classes extracted to production files
 - ✅ Test imports now use production classes only
 - ✅ All tests passing (run: `./gradlew domain:test --tests "PlaceOrderUseCaseTest"`)
-- ✅ Code follows team Java coding guidelines
+- ✅ Code follows [java-coding-guidelines.md](../../docs/agents/instructions/coding/java-coding-guidelines.md)
+- ✅ Code passes [code-review-guidelines.md](../../docs/agents/instructions/coding/code-review-guidelines.md)
 - ✅ Domain classes have no framework annotations
 - ✅ Method signatures unchanged
 - ✅ Behavior unchanged
