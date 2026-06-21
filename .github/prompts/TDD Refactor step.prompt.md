@@ -97,6 +97,10 @@ During REFACTOR, we extract inner classes from the test file to production modul
    - Re-run test to ensure it still passes
    - Verify no other test files broke
 
+5. **Once all files are clean and the tests are GREEN, update global documentation**
+   - Update `implemented-features-documentation.md` with new class locations and any relevant design decisions
+   - Follow the `features-documentation-guidelines.md` and current file state for formatting and content
+
 ## Input
 
 The agent receives the **JSON output from the GREEN phase**, which contains:
