@@ -17,3 +17,7 @@ Take 4:
 Take 5:
 - Force the agent to analyze its errors (Too many prod code produced instead of just skeletons). Make it rewrite the TDD Red step.prompt.md file to strictly avoid any anticipation. Modified file : `TDD Red step.prompt.md`
 - Let it wrote a memory file of its bias analyze.
+
+**TDD Refactor step prompt**
+Take 1:
+- Reinforce the rules so the agent follow micro-steps with verifications instead of moving/cleaning in one single batch and on single final verification. Modified file : `TDD Refactor step.prompt.md`

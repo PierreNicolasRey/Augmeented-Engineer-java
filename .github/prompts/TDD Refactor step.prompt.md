@@ -23,6 +23,40 @@ During REFACTOR, we extract inner classes from the test file to production modul
 - **NEVER anticipate future requirements**—refactor only what EXISTS, not what MIGHT be needed
 - Follow the team's coding guidelines and conventions
 
+---
+
+## 🚨 NON-NEGOTIABLE EXECUTION MANDATE
+
+**YOU MUST FOLLOW THESE RULES STRICTLY. NO EXCEPTIONS.**
+
+1. **Extract ONE inner class at a time**. You are FORBIDDEN from:
+   - ❌ Extracting multiple classes in a single operation
+   - ❌ Creating all production files at once
+   - ❌ Updating multiple test imports before running tests
+   - ❌ Deleting multiple inner classes from the test before validating GREEN
+
+2. **For EACH inner class, follow this EXACT sequence:**
+   - **STEP 1 (MODIFY):** Create/update production file with that ONE class only
+   - **STEP 2 (TEST):** Add import in test file + Run test → verify GREEN
+   - **STEP 3 (VALIDATE):** Confirm all assertions pass, no compilation errors
+   - **STEP 4 (CLEANUP):** Delete that ONE inner class from test file
+   - **STEP 5 (VERIFY):** Run test again → verify GREEN
+   - **STEP 6 (CONTINUE):** Move to NEXT inner class, repeat from STEP 1
+
+3. **Between EACH step, run the test.** If GREEN fails at ANY point:
+   - STOP immediately
+   - REVERT your changes
+   - DEBUG the issue before continuing
+   - Do NOT proceed to the next class
+
+4. **Do NOT batch multiple operations.** The phrase "one at a time" is non-negotiable and means:
+   - NOT: Extract all enums at once
+   - NOT: Create all files then update imports
+   - NOT: Update all imports then delete all inner classes
+   - YES: DrinkType → TEST GREEN ✅ → DELETE → TEST GREEN ✅ → OrderStatus → TEST GREEN ✅ → DELETE → TEST GREEN ✅ → etc.
+
+---
+
 ### Core Refactor Principles
 
 1. **Extract inner classes to appropriate production files** (one per step)
@@ -77,29 +111,54 @@ The agent **automatically accesses**:
 
 ## Micro-Step Process
 
-**Structure for each micro-step: MODIFY → TEST → VALIDATE → CONTINUE**
+**Structure for each micro-step: MODIFY → TEST → VALIDATE → CLEANUP → VERIFY → CONTINUE**
 
-### Step 0: Analyze and Plan
+### Step 0: Analyze and Plan (Do This ONCE Before Any Extraction)
 1. Read the GREEN test file completely
-2. Identify all inner classes and their dependencies
+2. Identify **ALL** inner classes and their dependencies
 3. Determine extraction order (enums/records first, then simple classes, then classes with dependencies)
 4. Plan which production files to create
-5. **Do NOT start extraction yet—plan first**
+5. **Do NOT start extraction yet—plan first and STOP here until confirmed**
 
-### Step N (for each class): Extract + Test + Validate
-1. **MODIFY**: Create the production file with the extracted inner class
-   - Copy the inner class to the correct package/location
-   - Remove any test-only code (e.g., test comments)
-   - Clean up formatting if needed
-2. **TEST**: Update test file import and run the test
-   - Change `import` to use production class instead of inner class
-   - Remove the inner class definition from test file
-   - Run test: `./gradlew domain:test --tests "TestClassName"`
-3. **VALIDATE**: Confirm test passes
-   - All assertions must pass
-   - No compilation errors
-   - No side effects on other tests
-4. **CONTINUE**: Move to next class or finish
+### Step N (REPEAT for EACH inner class, one class per iteration):
+
+#### **PHASE 1: MODIFY (Create Production File)**
+- Create ONE production file with the extracted inner class
+- Copy **ONLY** that ONE inner class from test to production file
+- Clean test-specific comments from the class definition
+- Verify the class compiles independently
+- **Do NOT delete from test yet**
+- **Do NOT create other production files**
+
+#### **PHASE 2: TEST (Add Import & Verify GREEN)**
+1. Update test file: Add `import` for the production class
+2. Do NOT modify test method or assertions
+3. Do NOT remove inner class from test yet
+4. Run test: `./gradlew domain:test --tests "TestClassName"`
+5. **MUST see: ✅ BUILD SUCCESSFUL**
+6. If test fails: STOP, REVERT all changes, debug
+
+#### **PHASE 3: VALIDATE (Confirm Behavior Unchanged)**
+- All assertions must pass identically
+- No compilation errors
+- No runtime errors
+- Test output matches GREEN baseline
+
+#### **PHASE 4: CLEANUP (Delete Inner Class from Test)**
+- Delete ONLY the ONE inner class definition from test file
+- Keep the import added in PHASE 2
+- Do NOT touch other inner classes
+
+#### **PHASE 5: VERIFY (Run Test Again)**
+1. Run test again: `./gradlew domain:test --tests "TestClassName"`
+2. **MUST see: ✅ BUILD SUCCESSFUL (again)**
+3. If test fails after cleanup: REVERT cleanup, keep production file, debug
+4. Verify test still GREEN without inner class in test file
+
+#### **PHASE 6: CHECKPOINT (Before Continuing)**
+- Confirm current state is fully GREEN
+- Only then move to NEXT inner class
+- Repeat Phases 1-5 for the next class
 
 ## Detailed Extraction Sequence
 
@@ -131,23 +190,44 @@ domain/src/main/java/com/it/exalt/belair/domain/order/
 
 ## Code Cleanup Guidelines
 
-### DO Clean Up:
-- ✅ Remove test-only comments (e.g., "// GREEN PHASE", "// INNER CLASSES")
-- ✅ Improve variable names if unclear (e.g., `fgId` → `festivalGoerId`)
-- ✅ Apply Java coding standards (formatting, spacing, method ordering)
-- ✅ Move fields/methods to proper visibility (`private`, `public`)
-- ✅ Add `final` keyword to immutable fields
-- ✅ Use `record` syntax for simple immutable value objects
-- ✅ Extract small duplicated logic across different classes
+**Principle: "Cleaned code must pass the EXACT same tests with the EXACT same assertions."**
 
-### DO NOT Over-Engineer:
-- ❌ Do NOT add new methods the test doesn't use
-- ❌ Do NOT refactor working code into patterns (Builder, Factory, etc.) unless duplication exists
-- ❌ Do NOT extract helper methods from single use sites
-- ❌ Do NOT change method signatures (the test calls these methods; keep signatures intact)
-- ❌ Do NOT add validation logic beyond what the test requires
-- ❌ Do NOT create new files or classes not extracted from the test
-- ❌ Do NOT change behavior—refactor appearance only
+### Code Cleanup = Improve APPEARANCE Only, Never BEHAVIOR
+
+Cleanup is refactoring the **presentation and structure** of code without altering what it does. If the test assertions would change because of your cleanup, YOU CHANGED BEHAVIOR—STOP.
+
+### DO Clean Up (Safe Refactoring):
+- ✅ Remove test-only comments (e.g., "// GREEN PHASE", "// INNER CLASSES", "// TODO", test annotations)
+- ✅ Improve variable names if unclear (e.g., `fgId` → `festivalGoerId`, `amt` → `amount`)
+- ✅ Apply Java coding standards (formatting, spacing, method ordering per guidelines)
+- ✅ Move fields/methods to proper visibility scope (`private`, `public`)
+- ✅ Add `final` keyword to immutable fields (improves clarity, not behavior)
+- ✅ Use `record` syntax for simple immutable value objects (if test-compatible)
+- ✅ Fix inconsistent spacing, indentation, or line breaks
+- ✅ Organize imports (remove unused, group logically)
+- ✅ Extract small duplicated logic **ONLY if it exists across multiple classes** (not single-use helpers)
+- ✅ Move test-specific setup code out of production code
+
+### DO NOT Change Behavior (Forbidden):
+- ❌ Do NOT add new methods the test doesn't call or doesn't need
+- ❌ Do NOT refactor working code into design patterns (Builder, Factory, Strategy, etc.) unless duplication forces it
+- ❌ Do NOT extract private helper methods from single use sites (violates YAGNI)
+- ❌ Do NOT change method signatures (return types, parameters, exceptions)
+- ❌ Do NOT modify return values or add conditional logic not in test
+- ❌ Do NOT add validation, error handling, or edge-case logic beyond what test requires
+- ❌ Do NOT create new classes or files not extracted from test inner classes
+- ❌ Do NOT add annotations (`@Valid`, `@NotNull`, etc.) unless test requires
+- ❌ Do NOT change field names that affect test execution (e.g., constructor parameters)
+- ❌ Do NOT modify the object graph or initialization flow
+
+### Behavior Preservation Checklist (Before & After Must Match):
+- ✅ Same input parameters → Same output behavior
+- ✅ Same return type (no casting, no wrapper changes)
+- ✅ Same field values calculated the same way
+- ✅ Same method calls in same sequence
+- ✅ Same exceptions or error states triggered
+- ✅ Same assertions in test must ALL pass without modification
+- ✅ If ANY test assertion changes because of your cleanup → YOU CHANGED BEHAVIOR (REVERT)
 
 ## Detailed Example: PlaceOrderUseCase Extraction
 
@@ -214,30 +294,43 @@ class PlaceOrderUseCaseTest {
 
 ## Execution Checklist
 
-### Pre-Extraction
-- [ ] Read the complete GREEN test file
-- [ ] List all inner classes and identify dependencies
-- [ ] Determine extraction order
-- [ ] Verify team's Java coding guidelines (read from docs)
-- [ ] Plan file structure and locations
+### Pre-Extraction (One-Time Setup)
+- [ ] Read the complete GREEN test file end-to-end
+- [ ] List **ALL** inner classes with their types (enum, record, class)
+- [ ] Identify dependencies between classes (which classes depend on which)
+- [ ] Determine extraction order: enums → records → classes → use cases
+- [ ] Read team's Java coding guidelines from `docs/agents/instructions/coding/java-coding-guidelines.md`
+- [ ] Plan file structure and target locations for each class
+- [ ] **STOP here and confirm plan before starting extraction**
 
-### For Each Class Extraction
-- [ ] Create production file with extracted class
-- [ ] Clean code: remove test comments, improve names
-- [ ] Verify class has NO framework annotations (if in Domain)
-- [ ] Update test file: add import for production class
-- [ ] Remove inner class definition from test
-- [ ] Run test: `./gradlew domain:test --tests "ClassName"`
-- [ ] Verify test PASSES (🟢 GREEN)
-- [ ] Verify NO other tests broke
-- [ ] Commit or checkpoint if appropriate
+### For EACH Inner Class (Repeat This Loop)
+**ITERATION #1 (First inner class):**
+- [ ] **PHASE 1:** Create production file with inner class #1
+- [ ] **PHASE 2:** Add import to test, run test → GREEN ✅
+- [ ] **PHASE 3:** Validate assertions pass (same as before)
+- [ ] **PHASE 4:** Delete inner class #1 from test
+- [ ] **PHASE 5:** Run test → GREEN ✅ (without inner class)
+- [ ] **CHECKPOINT:** Confirm 100% GREEN before next class
 
-### Post-Extraction
-- [ ] All inner classes extracted and deleted from test
-- [ ] Test file imports all classes from `src/main/java`
-- [ ] All tests passing (🟢 GREEN)
-- [ ] Code follows team guidelines
-- [ ] No test modifications—behavior unchanged
+**ITERATION #2 (Second inner class):**
+- [ ] Create production file with inner class #2
+- [ ] Add import to test, run test → GREEN ✅
+- [ ] Validate assertions pass
+- [ ] Delete inner class #2 from test
+- [ ] Run test → GREEN ✅
+- [ ] **CHECKPOINT:** Confirm GREEN before next class
+
+**ITERATION #3+ (Continue same pattern for each remaining class)**
+
+### Post-Extraction (Final Verification)
+- [ ] All inner classes extracted to production files
+- [ ] Test file imports all classes from `src/main/java` (no inner classes)
+- [ ] All tests passing: `./gradlew domain:test --tests "ClassName"` → ✅ GREEN
+- [ ] Code follows team Java coding guidelines and complies with the code review guidelines.
+- [ ] Domain classes have NO framework annotations
+- [ ] All method signatures unchanged
+- [ ] All test assertions unchanged
+- [ ] Code cleaned but behavior 100% identical to before
 
 ## Output: Confirmation of Completion
 
@@ -254,22 +347,54 @@ No JSON output needed for this phase.
 
 ## Important Guardrails
 
-### RED FLAGS 🚩 — STOP if you encounter these:
-- ❌ Test fails after extraction → REVERT immediately, debug the issue
-- ❌ Method signature changes → test won't compile; keep signatures as-is
-- ❌ New methods added that test doesn't use → DELETE them (over-engineering)
-- ❌ Framework annotations in Domain classes → REMOVE them (violates architecture)
-- ❌ Dependencies added to other modules → REFACTOR: use Ports if needed
-- ❌ Hardcoded returns replaced with "real" logic → OK if it's cleanup, NOT OK if it changes behavior
+### RED FLAGS 🚩 — STOP IMMEDIATELY if you encounter these:
+- ❌ Test fails after extraction → REVERT immediately, debug the issue BEFORE proceeding
+- ❌ Test assertions change behavior (e.g., return value is now different) → REVERT (behavior changed)
+- ❌ Method signature changes (parameters, return type) → REVERT (breaks contract)
+- ❌ New methods added that test doesn't call → DELETE them (over-engineering, violates YAGNI)
+- ❌ New fields added not in original inner class → DELETE them (behavior change)
+- ❌ Framework annotations added to Domain classes → REMOVE them (violates architecture)
+- ❌ Dependencies added to Application or Infrastructure modules → REFACTOR: use Ports instead
+- ❌ Hardcoded returns changed to computed values (behavior change) → REVERT
+- ❌ Any test assertion that wasn't true before is now true → REVERT immediately
+- ❌ Multiple inner classes extracted in one operation → REVERT, restart with one class
+
+### BEHAVIOR CORRUPTION INDICATORS (Always Revert):
+- ❌ If you added ANY logic that affects test outcomes → STOP, REVERT
+- ❌ If a test that was GREEN is now FAILING → REVERT to last GREEN state
+- ❌ If you changed what a method returns or calculates → REVERT
+- ❌ If you added null checks, validations, or error handling not in test → REVERT
+- ❌ If you refactored into a pattern (Builder, Factory, etc.) → REVERT (premature design)
 
 ### SPEED BUMPS 🛑 — Ask or clarify before proceeding:
-- ⚠️ Should this class be a record or a regular class? → Check immutability; records are for immutable value objects
-- ⚠️ Does this enum need more values? → NO; only include what the test uses; REFACTOR phase doesn't anticipate
-- ⚠️ Should we create a Port interface? → NO; extract classes first; add Ports only if test requires injection
-- ⚠️ Is the class location correct? → Verify with team's package structure guidelines
+- ⚠️ Should this class be a record or a regular class? → Check immutability; records are for immutable value objects only
+- ⚠️ Does this enum need more values? → NO; only include what the test uses; REFACTOR phase doesn't anticipate future needs
+- ⚠️ Should we create a Port interface? → NO; extract classes first; add Ports only if test explicitly requires injection
+- ⚠️ Is the class location correct? → Verify with team's package structure guidelines (docs/AGENTS.md)
+- ⚠️ Can I extract logic across classes to reduce duplication? → Only if duplication is REAL and across multiple classes, NOT single methods
 
 ## Conclusion
 
-REFACTOR is about **extraction and cleanup**, not redesign. Move code to production, clean it, verify tests remain GREEN, and move on. Resist the urge to add "better" patterns or "future-proof" designs—save that for when the code actually needs it.
+**REFACTOR is about extraction and cleanup, NOT redesign or over-engineering.**
 
-**Keep it simple. Keep tests GREEN. Keep moving.**
+### Core Discipline:
+- Move code to production **one class at a time**
+- Test after every move to confirm GREEN
+- Clean code for clarity (appearance), not behavior
+- Verify tests remain GREEN without changing assertions
+
+### What You MUST Remember:
+- ✅ **ONE class at a time**, not all at once
+- ✅ **TEST after each step**, not after all steps
+- ✅ **Cleanup = appearance only**, never behavior
+- ✅ **Same input → same output**, always
+- ✅ **If tests fail, revert immediately**
+
+### What You MUST NOT Do:
+- ❌ Do NOT extract multiple classes in one batch
+- ❌ Do NOT anticipate future requirements
+- ❌ Do NOT add patterns or "improvements" not tested
+- ❌ Do NOT change method behavior or signatures
+- ❌ Do NOT add new methods the test doesn't use
+
+**If you deviate from this discipline, you will corrupt behavior. Keep it simple. Keep tests GREEN. Keep moving one step at a time.**
