@@ -13,3 +13,7 @@ Take 3:
 
 Take 4:
 - Reinforce the rules to avoid anticipation like creating a prod interface when the Fake class is enough for the test to compile. Modified file : `TDD Red step.prompt.md`
+
+Take 5:
+- Force the agent to analyze its errors (Too many prod code produced instead of just skeletons). Make it rewrite the TDD Red step.prompt.md file to strictly avoid any anticipation. Modified file : `TDD Red step.prompt.md`
+- Let it wrote a memory file of its bias analyze.
