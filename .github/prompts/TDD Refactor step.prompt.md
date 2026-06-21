@@ -396,5 +396,6 @@ No JSON output needed for this phase.
 - ❌ Do NOT add patterns or "improvements" not tested
 - ❌ Do NOT change method behavior or signatures
 - ❌ Do NOT add new methods the test doesn't use
+- ❌ Do NOT add useless comments like "ALL PRODUCTION CLASSES EXTRACTED" or "CLEANUP DONE"— they clutter the code
 
 **If you deviate from this discipline, you will corrupt behavior. Keep it simple. Keep tests GREEN. Keep moving one step at a time.**
