@@ -10,3 +10,6 @@ Take 2:
 Take 3:
 - Reinforce the rules to avoid ANY production code writing except skeletons to avoid compilation failure. Modified file : `TDD Red step.prompt.md`
 - Add more examples of expected output : test file and src/main/java skeleton files. Modified file : `TDD Red step.prompt.md`
+
+Take 4:
+- Reinforce the rules to avoid anticipation like creating a prod interface when the Fake class is enough for the test to compile. Modified file : `TDD Red step.prompt.md`

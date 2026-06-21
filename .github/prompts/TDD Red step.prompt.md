@@ -27,12 +27,15 @@ model: Claude Haiku 4.5 (copilot)
      - **Methods**: Body must contain EXACTLY `throw new UnsupportedOperationException("Not implemented yet");` (or return `null`/`0` if primitive, but throwing is preferred).
      - **Enums**: Must be strictly empty or contain only a single dummy value required to compile the test. **NEVER** anticipate or list all possible enum values.
      - **NO LOGICAL STATEMENTS**: No `if`, `for`, `switch`, assignments, or computed returns are allowed in `src/main/java`.
-5. If the test needs a Fake implementation, create a new Fake class in the appropriate directory structure of the test tree (`src/test/java`) and implement the necessary methods to support the test case. Do **NOT** implement the Fake inside the test file itself.
-6. Run the test to confirm it compiles and fails with an explicit failure (e.g., `UnsupportedOperationException` or assertion failure).
+5. If the test needs a Fake implementation, create a new Fake class in the appropriate directory structure of the test tree (`src/test/java`).
+   - **STRICT FAKE RULE**: The Fake class must **NOT** implement any production interface (like ports or repositories) that does not exist yet. The Fake should be a standalone class containing only the minimal methods required by your test. 
+   - Do **NOT** implement the Fake inside the test file itself.
+6. Run the test to confirm it compiles and fails with an explicit failure. (e.g., `UnsupportedOperationException` or assertion failure).
 
 ## Requirements
 - You **MUST** follow the guidelines for the module you are currently working on.
 - **CRITICAL / RED RULE**: You are strictly FORBIDDEN from implementing any production code or business logic in `src/main/java`. Skeletons created purely to fix compilation errors must be completely devoid of logic, data structures, or multi-valued enums. If a method does more than throwing an exception or returning a dummy value, you have failed this step.
+- **ANTI-ANTICIPATION RULE**: Do **NOT** create production interfaces, abstract classes, or ports (e.g., `OrderRepository`) in `src/main/java` if the test can compile using just a standalone `Fake` class in `src/test/java`. Interfaces and ports must only be introduced in the GREEN/REFACTOR steps when the production code actually requires inversion of control.
 - You **MUST** ensure the test fails when executed. A successful compilation that does not execute tests or passes them is an absolute failure.
 - The name of the test method should be descriptive and follow the naming conventions outlined in the testing guidelines.
 
