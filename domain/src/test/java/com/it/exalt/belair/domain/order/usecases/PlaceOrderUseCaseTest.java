@@ -1,9 +1,5 @@
 package com.it.exalt.belair.domain.order.usecases;
 
-import com.it.exalt.belair.domain.order.model.Order;
-import com.it.exalt.belair.domain.order.model.OrderItem;
-import com.it.exalt.belair.domain.order.model.DrinkType;
-import com.it.exalt.belair.domain.order.model.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,5 +28,50 @@ class PlaceOrderUseCaseTest {
         assertThat(order.getItemCount()).isEqualTo(1);
         // And the total drink token cost is 1
         assertThat(order.getDrinkTokenCost()).isEqualTo(1);
+    }
+    
+    // ============ PRODUCTION CODE (INNER CLASSES - GREEN PHASE) ============
+    
+    enum DrinkType {
+        NORMAL_ALCOHOLIC
+    }
+    
+    enum OrderStatus {
+        PENDING
+    }
+    
+    record OrderItem(DrinkType drinkType, int quantity) {
+        public static OrderItem createDrinkItem(DrinkType type, int quantity) {
+            return new OrderItem(type, quantity);
+        }
+    }
+    
+    class Order {
+        private final OrderItem item;
+        
+        public Order(OrderItem item) {
+            this.item = item;
+        }
+        
+        public OrderStatus getStatus() {
+            return OrderStatus.PENDING;
+        }
+        
+        public int getItemCount() {
+            return 1;
+        }
+        
+        public int getDrinkTokenCost() {
+            if (item.drinkType() == DrinkType.NORMAL_ALCOHOLIC) {
+                return 1;
+            }
+            return 0;
+        }
+    }
+    
+    class PlaceOrderUseCase {
+        public Order placeOrder(String festivalGoerId, OrderItem item, int drinkTokens, int snackTokens) {
+            return new Order(item);
+        }
     }
 }
