@@ -11,6 +11,10 @@ model: Claude Haiku 4.5 (copilot)
 
 ## Instructions
 
+**🚨 ABSOLUTE RULE: ALL code during GREEN phase is written INSIDE the test class itself. Do NOT modify `src/main/java` files. Do NOT create separate test files.**
+
+This is non-negotiable. Write all production code as **inner classes or nested classes directly inside the test class**. The test class file is the ONLY place where code goes during GREEN. The REFACTOR phase will extract these inner classes to production files later.
+
 **ABSOLUTE RULE: Implement ONLY what is necessary to make the test pass. No more. No anticipation. Period.**
 
 ### Philosophy: "TDD as if you meant it"
@@ -20,6 +24,7 @@ During GREEN, we implement code **in a way that makes the test pass with minimal
 - No premature refactoring or design patterns
 - No interfaces, repositories, or abstractions unless the test requires them
 - The goal is to **make the test pass**, not to build production code yet. The REFACTOR phase handles extraction and design.
+- **All implementations are test-local fakes/stubs in `src/test/java`; never touch `src/main/java` during GREEN.**
 
 ## Input
 
@@ -60,6 +65,12 @@ Provide:
 ## Requirements
 
 **Zero tolerance for over-engineering. These rules are non-negotiable.**
+
+- **🚨 ABSOLUTE: ALL code you write during GREEN is written INSIDE the test class file. DO NOT touch `src/main/java`. DO NOT create separate test files.**
+  - Write production code as **inner classes, nested classes, or local classes directly inside `PlaceOrderUseCaseTest`**.
+  - The test class file is the only place where you make changes.
+  - Never modify files in `src/main/java`. Never create new files in `src/test/java`. The test class IS your workspace.
+  - At the end of REFACTOR, these inner classes will be extracted to production files (`src/main/java`), but that's REFACTOR's job, not GREEN's.
 
 - **ABSOLUTE: Implement code that makes the test pass, using the simplest possible logic.**
   - Hardcoded returns are acceptable if they pass the test.
@@ -124,53 +135,95 @@ void placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNor
 }
 ```
 
-**Expected Output in GREEN phase: Minimal implementations only.**
+**Expected Output in GREEN phase: Write all production code as inner classes inside `PlaceOrderUseCaseTest.java`.**
 
-**1. Implement OrderItem factory method:**
+The entire file `domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java` becomes:
+
 ```java
-public record OrderItem(DrinkType drinkType, int quantity) {
-    public static OrderItem createDrinkItem(DrinkType type, int quantity) {
-        return new OrderItem(type, quantity);  // Minimal: just create the record
-    }
-}
-```
+package com.it.exalt.belair.domain.order.usecases;
 
-**2. Implement Order class minimally:**
-```java
-public class Order {
-    private OrderStatus status = OrderStatus.PENDING;  // Hardcoded for this test
-    private OrderItem item;  // Store what we receive
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class PlaceOrderUseCaseTest {
     
-    public Order(OrderItem item) {
-        this.item = item;
+    private PlaceOrderUseCase sut;  // System Under Test
+    
+    @Test
+    void placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNormalAlcoholicDrink() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 6 drink tokens and 9 snack tokens
+        int drinkTokens = 6;
+        int snackTokens = 9;
+        
+        // WHEN placing an order with 1 normal alcoholic drink
+        sut = new PlaceOrderUseCase();
+        var item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 1);
+        Order order = sut.placeOrder(festivalGoerId, item, drinkTokens, snackTokens);
+        
+        // THEN an Order is created with status PENDING
+        assertThat(order).isNotNull();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 1 drink item
+        assertThat(order.getItemCount()).isEqualTo(1);
+        // And the total drink token cost is 1
+        assertThat(order.getDrinkTokenCost()).isEqualTo(1);
     }
     
-    public OrderStatus getStatus() {
-        return OrderStatus.PENDING;  // Hardcoded: the test expects PENDING
+    // ============ PRODUCTION CODE BELOW (inner classes) ============
+    
+    enum DrinkType {
+        NORMAL_ALCOHOLIC
     }
-
-    public int getItemCount() {
-        return 1;  // Hardcoded: the test expects 1 item
+    
+    enum OrderStatus {
+        PENDING
     }
-
-    public int getDrinkTokenCost() {
-        // Minimal logic: if it's a normal alcoholic drink, cost is 1
-        if (item.drinkType() == DrinkType.NORMAL_ALCOHOLIC) {
-            return 1;
+    
+    record OrderItem(DrinkType drinkType, int quantity) {
+        public static OrderItem createDrinkItem(DrinkType type, int quantity) {
+            return new OrderItem(type, quantity);  // Minimal: just create the record
         }
-        return 0;
+    }
+    
+    class Order {
+        private OrderItem item;
+        
+        public Order(OrderItem item) {
+            this.item = item;
+        }
+        
+        public OrderStatus getStatus() {
+            return OrderStatus.PENDING;  // Hardcoded: the test expects PENDING
+        }
+
+        public int getItemCount() {
+            return 1;  // Hardcoded: the test expects 1 item
+        }
+
+        public int getDrinkTokenCost() {
+            // Minimal logic: if it's a normal alcoholic drink, cost is 1
+            if (item.drinkType() == DrinkType.NORMAL_ALCOHOLIC) {
+                return 1;
+            }
+            return 0;
+        }
+    }
+    
+    class PlaceOrderUseCase {
+        public Order placeOrder(String festivalGoerId, OrderItem item, int drinkTokens, int snackTokens) {
+            return new Order(item);  // Create and return the order immediately
+        }
     }
 }
 ```
 
-**3. Implement PlaceOrderUseCase minimally:**
-```java
-public class PlaceOrderUseCase {
-    public Order placeOrder(String festivalGoerId, OrderItem item, int drinkTokens, int snackTokens) {
-        return new Order(item);  // Create and return the order immediately
-    }
-}
-```
+**Key points:**
+- All production code (OrderStatus, DrinkType, OrderItem, Order, PlaceOrderUseCase) is written as **inner classes inside the test class**.
+- No separate files created.
+- No `src/main/java` files modified.
+- The test file is self-contained and complete.
 
 **What is NOT done in GREEN for this test:**
 - ❌ No token reservation logic (test doesn't assert it)
@@ -189,10 +242,49 @@ public class PlaceOrderUseCase {
 - Test runs and passes ✓
 - All assertions succeed ✓
 - Zero over-engineering ✓
+- All implementation stays in `src/test/java` ✓
 
 ---
 
 ## Negative Examples (What NOT to do)
+
+### 🚨 ❌ CRITICALLY WRONG: Creating separate files or modifying `src/main/java`
+
+**WRONG - DO NOT DO THIS:**
+```
+❌ Creating domain/src/test/java/com/it/exalt/belair/domain/order/model/Order.java (separate file)
+❌ Creating domain/src/test/java/com/it/exalt/belair/domain/order/model/OrderItem.java (separate file)
+❌ Modifying domain/src/main/java/.../*.java (touching production code)
+❌ Creating multiple test files for the same test scenario
+```
+
+**CORRECT - DO THIS INSTEAD:**
+```
+✅ Write all code as INNER CLASSES inside PlaceOrderUseCaseTest.java
+✅ Keep EVERYTHING in the single test class file
+✅ Do NOT create any new files
+✅ Do NOT modify any files in src/main/java
+```
+
+Example of WRONG approach:
+```java
+// ❌ WRONG FILE STRUCTURE
+domain/src/test/java/com/it/exalt/belair/domain/order/model/Order.java (new file created - WRONG!)
+domain/src/test/java/com/it/exalt/belair/domain/order/model/OrderItem.java (new file created - WRONG!)
+```
+
+Example of CORRECT approach:
+```java
+// ✅ CORRECT - Everything in PlaceOrderUseCaseTest.java
+class PlaceOrderUseCaseTest {
+    // Test method here
+    
+    // Production code as inner classes (not separate files)
+    enum OrderStatus { PENDING }
+    class Order { /* ... */ }
+    class PlaceOrderUseCase { /* ... */ }
+}
+```
 
 ### ❌ WRONG: Creating a token reservation system prematurely
 ```java
@@ -270,20 +362,36 @@ After implementing and passing the test, provide output in this format:
   "test_file": "domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java",
   "test_method": "placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNormalAlcoholicDrink",
   "test_status": "PASSING",
+  "critical_note": "All production code written as INNER CLASSES inside the test class file. No separate files created. No src/main/java files modified.",
   "implementation_summary": {
-    "classes_created": [],
-    "classes_modified": [
+    "location": "domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java",
+    "structure": "All production code as inner classes/enums inside the test class",
+    "inner_classes_added": [
+      {
+        "name": "DrinkType",
+        "type": "enum",
+        "changes": [
+          "Added NORMAL_ALCOHOLIC value (test-local enum)"
+        ]
+      },
+      {
+        "name": "OrderStatus",
+        "type": "enum",
+        "changes": [
+          "Added PENDING value (test-local enum)"
+        ]
+      },
       {
         "name": "OrderItem",
-        "file": "domain/src/main/java/com/it/exalt/belair/domain/order/model/OrderItem.java",
+        "type": "record",
         "changes": [
-          "Implemented OrderItem.createDrinkItem() factory method",
-          "Returns new OrderItem record instance"
+          "Implemented as inner record with drinkType and quantity",
+          "Implemented createDrinkItem() factory method"
         ]
       },
       {
         "name": "Order",
-        "file": "domain/src/main/java/com/it/exalt/belair/domain/order/model/Order.java",
+        "type": "class",
         "changes": [
           "Added constructor: Order(OrderItem item)",
           "Implemented getStatus() to return OrderStatus.PENDING",
@@ -293,17 +401,16 @@ After implementing and passing the test, provide output in this format:
       },
       {
         "name": "PlaceOrderUseCase",
-        "file": "domain/src/main/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCase.java",
+        "type": "class",
         "changes": [
           "Implemented placeOrder() to create and return new Order(item)"
         ]
       }
     ],
-    "enums_modified": [],
-    "interfaces_created": [],
-    "fakes_created": [],
-    "total_lines_added": 15,
-    "total_lines_removed": 3
+    "separate_files_created": "NONE - all code in test class",
+    "production_files_modified": "NONE",
+    "total_lines_added": 60,
+    "total_lines_removed": 0
   },
   "assertions_passing": [
     "order is not null",
@@ -312,15 +419,17 @@ After implementing and passing the test, provide output in this format:
     "order.getDrinkTokenCost() == 1"
   ],
   "design_decisions": [
+    "All production code as inner classes — TDD as if you meant it",
     "Hardcoded OrderStatus.PENDING in getStatus() — only PENDING status is tested",
     "Hardcoded itemCount return 1 — only one item is tested",
     "Minimal drink token cost logic — only normal alcoholic (1 token) is tested",
     "No token reservation, no persistence, no event publishing — test doesn't require these"
   ],
+  "refactor_note": "During REFACTOR phase, extract inner classes to production files: src/main/java/com/it/exalt/belair/domain/order/model/{Order,OrderItem,DrinkType,OrderStatus}.java and src/main/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCase.java",
   "next_steps": [
-    "Run GREEN test: ./gradlew domain:test --tests '*PlaceOrderUseCaseTest#placeOrder_shouldCreateOrderWithPendingStatus*'",
+    "Run GREEN test: ./gradlew domain:test --tests 'PlaceOrderUseCaseTest'",
     "Verify all assertions pass",
-    "Move to REFACTOR phase when ready to extract and clean code"
+    "Move to REFACTOR phase to extract inner classes to production files"
   ]
 }
 ```
@@ -331,9 +440,11 @@ After implementing and passing the test, provide output in this format:
 
 - [ ] Read the RED test method completely
 - [ ] Understand all test inputs and expected outputs
+- [ ] **Write all production code as INNER CLASSES inside the test class file ONLY**
+- [ ] **Do NOT create any separate files**
+- [ ] **Do NOT modify any files in `src/main/java`**
 - [ ] Implement minimal code to make test pass (no over-engineering)
 - [ ] Run the test: it MUST pass
 - [ ] Verify no other tests were modified
-- [ ] Produce the JSON output
-- [ ] Confirm all design decisions are documented
+- [ ] Produce the JSON output with note that all work is in the test class file
 
