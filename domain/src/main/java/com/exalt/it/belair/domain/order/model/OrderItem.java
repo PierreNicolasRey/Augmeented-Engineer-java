@@ -1,4 +1,4 @@
-package com.it.exalt.belair.domain.order.model;
+package com.exalt.it.belair.domain.order.model;
 
 /**
  * Represents a single item within an order (drink, food, etc.).

@@ -1,10 +1,12 @@
-package com.it.exalt.belair.domain.order.usecases;
+package com.exalt.it.belair.domain.order.usecases;
 
-import com.it.exalt.belair.domain.order.model.DrinkTypeEnum;
-import com.it.exalt.belair.domain.order.model.OrderStatusEnum;
-import com.it.exalt.belair.domain.order.model.OrderItem;
-import com.it.exalt.belair.domain.order.model.Order;
 import org.junit.jupiter.api.Test;
+
+import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
+import com.exalt.it.belair.domain.order.model.Order;
+import com.exalt.it.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.usecases.PlaceOrderUseCase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

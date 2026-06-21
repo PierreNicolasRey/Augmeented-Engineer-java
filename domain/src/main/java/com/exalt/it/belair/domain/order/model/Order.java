@@ -1,4 +1,4 @@
-package com.it.exalt.belair.domain.order.model;
+package com.exalt.it.belair.domain.order.model;
 
 /**
  * Represents an order placed by a festival goer.

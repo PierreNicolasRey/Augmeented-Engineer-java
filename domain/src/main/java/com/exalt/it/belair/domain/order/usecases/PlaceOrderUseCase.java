@@ -1,7 +1,7 @@
-package com.it.exalt.belair.domain.order.usecases;
+package com.exalt.it.belair.domain.order.usecases;
 
-import com.it.exalt.belair.domain.order.model.Order;
-import com.it.exalt.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.Order;
+import com.exalt.it.belair.domain.order.model.OrderItem;
 
 /**
  * Use case for placing an order in the Belair Buvette ordering system.
