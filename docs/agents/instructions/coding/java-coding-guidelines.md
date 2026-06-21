@@ -13,7 +13,8 @@ Recommended tooling: use `google-java-format` or `spotless` configured in Gradle
 ## Naming Conventions
 
 - **Packages:** All lower-case, reverse-domain style: `com.exalt.it.belair`.
-- **Classes / Interfaces / Enums:** PascalCase: `OrderService`, `MenuItem`.
+- **Classes / Interfaces:** PascalCase: `OrderService`, `MenuItem`.
+- **Enums:** PascalCase with `Enum` suffix: `OrderStatusEnum`, `DrinkTypeEnum`.
 - **Methods:** camelCase, verb-based: `calculateTotal()`.
 - **Variables / Parameters / Fields:** camelCase: `orderItems`, `totalAmount`.
 - **Constants:** UPPER_SNAKE_CASE and `static final`: `DEFAULT_TAX_RATE`.
