@@ -11,7 +11,8 @@ model: Claude Haiku 4.5 (copilot)
 
 ## Instructions
 
-**ABSOLUTE RULE: Do the bare minimum to make the test code compile. Period. Anticipation is poisoning.**
+**CRITICAL** **ABSOLUTE RULE: Do the bare minimum to make the test code compile Anticipation is poisoning.**
+**CRITICAL** **ABSOLUTE RULE: Do NOT implement any production code AT ALL. Use minimal inner classes.**
 
 1. **Extract and understand the scenario:**
    - If the scenario is a reference (e.g., issue #123), retrieve the exact scenario text.

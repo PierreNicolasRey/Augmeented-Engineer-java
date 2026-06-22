@@ -546,7 +546,7 @@ public enum OrderStatus {
 
 ## Output: Structured Result (JSON)
 
-After implementing and passing the test, provide output in this format:
+After implementing and passing the test, **ALWAYS** provide output in this format:
 
 ```json
 {

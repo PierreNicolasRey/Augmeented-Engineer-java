@@ -111,6 +111,8 @@ Located in `<repository_root>/infrastructure/`. This is the technical, outbound 
 │     │  ├─ model/                   # Rich Entities and Value Objects
 │     │  ├─ events/                  # Domain Events definitions
 │     │  ├─ ports/                   # Inbound and Outbound Port interfaces
+│     │  │  ├─ in/                   # Inbound Ports interfaces
+│     │  │  └─ out/                  # Outbound Ports interfaces
 │     │  ├─ services/                # Domain Services (for simple queries)
 │     │  └─ usecases/                # Use Cases (for complex business rules)
 │     └─ test/java/                  # Pure unit tests for business logic

@@ -80,24 +80,27 @@ During REFACTOR, we extract inner classes from the test file to production modul
    - Use Cases → `domain/src/main/java/com/it/exalt/belair/domain/[module]/usecases/`
    - Domain Services → `domain/src/main/java/com/it/exalt/belair/domain/[module]/services/`
 
-2. **Clean code without changing behavior**
+2. **Maintain code coherence**
+   - If production code already exists for a class that you have to modify, do NOT create a duplicate class or method. Adapt it to comply with the scenario requirements WITHOUT breaking existing functionality.
+
+3. **Clean code without changing behavior**
    - Remove test-only comments and setup code not needed in production
    - Improve variable and method names if they're unclear
    - Extract duplication **only if it exists across classes** (not within a single simple class)
    - Apply team's Java coding guidelines
 
-3. **Maintain architectural compliance**
+4. **Maintain architectural compliance**
    - Domain classes MUST NOT have framework annotations (`@Entity`, `@Service`, etc.)
    - Keep Domain Models rich with business logic, not anemic DTOs
    - Records are preferred for simple immutable value objects
    - No dependencies on Application or Infrastructure modules
 
-4. **Update test imports and verify GREEN after each step**
+5. **Update test imports and verify GREEN after each step**
    - Change imports from inner classes to production classes
    - Re-run test to ensure it still passes
    - Verify no other test files broke
 
-5. **Once all files are clean and the tests are GREEN, update global documentation**
+6. **Once all files are clean and the tests are GREEN, update global documentation**
    - Update `implemented-features-documentation.md` with new class locations and any relevant design decisions
    - Follow the `features-documentation-guidelines.md` and current file state for formatting and content
 
