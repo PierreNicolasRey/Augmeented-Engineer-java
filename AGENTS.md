@@ -100,7 +100,10 @@ Located in `<repository_root>/infrastructure/`. This is the technical, outbound 
 │  ├─ build.gradle.kts
 │  └─ src/
 │     ├─ main/java/[root_package]/   # e.g., com/exalt/it/belair
+│     │  ├─ config/  
 │     │  ├─ rest/                    # HTTP Controllers
+│     │  │   └─ order                # exemple of partition by sub-rest api
+│     │  │   │    └─ PlaceOrderController
 │     │  ├─ dto/                     # Request/Response DTO records
 │     │  └─ mapper/                  # Application mappers (DTO <-> Domain)
 │     └─ test/java/

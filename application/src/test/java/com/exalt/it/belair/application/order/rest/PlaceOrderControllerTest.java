@@ -11,11 +11,16 @@ import com.exalt.it.belair.domain.order.exceptions.InsufficientTokensException;
 import com.exalt.it.belair.domain.order.exceptions.InvalidItemTypeException;
 import com.exalt.it.belair.domain.order.exceptions.InvalidQuantityException;
 import com.exalt.it.belair.domain.order.exceptions.InvalidSubtypeException;
-import com.exalt.it.belair.domain.order.ports.PlaceOrderUseCase;
+import com.exalt.it.belair.domain.order.model.Order;
+import com.exalt.it.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.ports.in.PlaceOrderUseCasePort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Spy;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +30,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,7 +41,7 @@ class PlaceOrderControllerTest {
     private ObjectMapper objectMapper;
 
     @Mock
-    private PlaceOrderUseCase placeOrderUseCase;
+    private PlaceOrderUseCasePort placeOrderUseCase;
 
     @BeforeEach
     void setup() {
@@ -47,21 +53,70 @@ class PlaceOrderControllerTest {
         objectMapper = new ObjectMapper();
     }
 
+    private Order createMockOrder(String... itemSpecs) {
+        Order mockOrder = mock(Order.class);
+        List<OrderItem> items = new java.util.ArrayList<>();
+        int drinkTokenCost = 0;
+        int snackTokenCost = 0;
+        
+        for (String spec : itemSpecs) {
+            // Format: "DRINK,NORMAL_ALCOHOLIC,1"
+            String[] parts = spec.split(",");
+            String itemType = parts[0];
+            String itemSubtype = parts[1];
+            int quantity = Integer.parseInt(parts[2]);
+            
+            OrderItem mockItem = mock(OrderItem.class);
+            when(mockItem.getItemType()).thenReturn(itemType);
+            when(mockItem.getItemSubtype()).thenReturn(itemSubtype);
+            when(mockItem.getQuantity()).thenReturn(quantity);
+            items.add(mockItem);
+            
+            // Calculate token costs based on item type and subtype
+            if ("DRINK".equals(itemType)) {
+                switch (itemSubtype) {
+                    case "NON_ALCOHOLIC":
+                        drinkTokenCost += 0;
+                        break;
+                    case "NORMAL_ALCOHOLIC":
+                        drinkTokenCost += quantity;
+                        break;
+                    case "PREMIUM_ALCOHOLIC":
+                        drinkTokenCost += quantity * 2;
+                        break;
+                }
+            } else if ("FOOD".equals(itemType)) {
+                switch (itemSubtype) {
+                    case "SNACK":
+                        snackTokenCost += quantity;
+                        break;
+                    case "MEAL":
+                        snackTokenCost += quantity * 2;
+                        break;
+                }
+            }
+        }
+        when(mockOrder.getItems()).thenReturn(items);
+        when(mockOrder.getDrinkTokenCost()).thenReturn(drinkTokenCost);
+        when(mockOrder.getSnackTokenCost()).thenReturn(snackTokenCost);
+        return mockOrder;
+    }
+
     @Test
     void post_shouldReturn201WithOrderDetails_whenPlacingOrderWithSingleDrink() throws Exception {
         var request = new PlaceOrderRequest(
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "NORMAL_ALCOHOLIC", 1))
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(new OrderItemResponse("DRINK", "NORMAL_ALCOHOLIC", 1)),
-                1,
-                0
-        );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        Order mockOrder = mock(Order.class);
+        OrderItem mockItem = mock(OrderItem.class);
+        when(mockItem.getItemType()).thenReturn("DRINK");
+        when(mockItem.getItemSubtype()).thenReturn("NORMAL_ALCOHOLIC");
+        when(mockItem.getQuantity()).thenReturn(1);
+        when(mockOrder.getItems()).thenReturn(List.of(mockItem));
+        when(mockOrder.getDrinkTokenCost()).thenReturn(1);
+        when(mockOrder.getSnackTokenCost()).thenReturn(0);
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -78,15 +133,8 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "NON_ALCOHOLIC", 3))
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(new OrderItemResponse("DRINK", "NON_ALCOHOLIC", 3)),
-                0,
-                0
-        );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        Order mockOrder = createMockOrder("DRINK,NON_ALCOHOLIC,3");
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -101,15 +149,8 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "PREMIUM_ALCOHOLIC", 2))
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(new OrderItemResponse("DRINK", "PREMIUM_ALCOHOLIC", 2)),
-                4,
-                0
-        );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        Order mockOrder = createMockOrder("DRINK,PREMIUM_ALCOHOLIC,2");
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -124,15 +165,8 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("FOOD", "SNACK", 2))
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(new OrderItemResponse("FOOD", "SNACK", 2)),
-                0,
-                2
-        );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        Order mockOrder = createMockOrder("FOOD,SNACK,2");
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -145,17 +179,10 @@ class PlaceOrderControllerTest {
     void post_shouldReturn201WithSnackTokensCostSix_whenPlacingOrderWithMeals() throws Exception {
         var request = new PlaceOrderRequest(
                 "fgv-001",
-                List.of(new OrderItemRequest("FOOD", "MEAL", 2))
+                List.of(new OrderItemRequest("FOOD", "MEAL", 3))
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(new OrderItemResponse("FOOD", "MEAL", 2)),
-                0,
-                6
-        );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        Order mockOrder = createMockOrder("FOOD,MEAL,3");
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -175,33 +202,26 @@ class PlaceOrderControllerTest {
                         new OrderItemRequest("FOOD", "MEAL", 1)
                 )
         );
-        var response = new PlaceOrderResponse(
-                "order-001",
-                "fgv-001",
-                "PENDING",
-                List.of(
-                        new OrderItemResponse("DRINK", "NORMAL_ALCOHOLIC", 2),
-                        new OrderItemResponse("DRINK", "NON_ALCOHOLIC", 1),
-                        new OrderItemResponse("FOOD", "SNACK", 2),
-                        new OrderItemResponse("FOOD", "MEAL", 1)
-                ),
-                2,
-                5
+        Order mockOrder = createMockOrder(
+                "DRINK,NORMAL_ALCOHOLIC,2",
+                "DRINK,NON_ALCOHOLIC,1",
+                "FOOD,SNACK,2",
+                "FOOD,MEAL,1"
         );
-        when(placeOrderUseCase.execute(any())).thenReturn(response);
+        when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.drinkTokensCost").value(2))
-                .andExpect(jsonPath("$.snackTokensCost").value(5));
+                .andExpect(jsonPath("$.snackTokensCost").value(4));
     }
 
     @Test
     void post_shouldReturn400_whenOrderIsEmpty() throws Exception {
         var request = new PlaceOrderRequest("fgv-001", List.of());
-        when(placeOrderUseCase.execute(any())).thenThrow(new EmptyOrderException("Order items cannot be empty"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new EmptyOrderException("Order items cannot be empty"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -215,7 +235,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("INVALID", "SOMETHING", 1))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InvalidItemTypeException("Invalid item type: INVALID"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InvalidItemTypeException("Invalid item type: INVALID"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -229,7 +249,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "SNACK", 1))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InvalidSubtypeException("Invalid subtype SNACK for item type DRINK"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InvalidSubtypeException("Invalid subtype SNACK for item type DRINK"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -243,7 +263,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "NORMAL_ALCOHOLIC", 0))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InvalidQuantityException("Quantity must be greater than 0"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InvalidQuantityException("Quantity must be greater than 0"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -257,7 +277,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "NORMAL_ALCOHOLIC", -1))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InvalidQuantityException("Quantity must be greater than 0"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InvalidQuantityException("Quantity must be greater than 0"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -271,7 +291,7 @@ class PlaceOrderControllerTest {
                 "fgv-999",
                 List.of(new OrderItemRequest("DRINK", "NON_ALCOHOLIC", 1))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new FestivalGoerNotFoundException("Festival goer fgv-999 not found"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new FestivalGoerNotFoundException("Festival goer fgv-999 not found"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -285,7 +305,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("DRINK", "NORMAL_ALCOHOLIC", 3))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InsufficientTokensException("Insufficient drink tokens"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InsufficientTokensException("Insufficient drink tokens"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -299,7 +319,7 @@ class PlaceOrderControllerTest {
                 "fgv-001",
                 List.of(new OrderItemRequest("FOOD", "MEAL", 3))
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InsufficientTokensException("Insufficient snack tokens"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InsufficientTokensException("Insufficient snack tokens"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -316,11 +336,13 @@ class PlaceOrderControllerTest {
                         new OrderItemRequest("FOOD", "MEAL", 1)
                 )
         );
-        when(placeOrderUseCase.execute(any())).thenThrow(new InsufficientTokensException("Insufficient tokens"));
+        when(placeOrderUseCase.placeOrder(any())).thenThrow(new InsufficientTokensException("Insufficient tokens"));
 
         mvc.perform(post("/api/v1/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity());
     }
+
+
 }

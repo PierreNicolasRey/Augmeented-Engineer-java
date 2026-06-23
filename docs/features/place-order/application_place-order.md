@@ -85,15 +85,7 @@ The Application module requires a REST controller and DTOs to expose order creat
    - Calculates timestamps
    - Formats all enums to string
 
-5. Create `PlaceOrderRequestValidator`:
-   - Validates items list not empty
-   - Validates each item has quantity > 0
-   - Validates itemSubtype matches itemType
-   - Valid combinations:
-     - DRINK: NON_ALCOHOLIC, NORMAL_ALCOHOLIC, PREMIUM_ALCOHOLIC
-     - FOOD: SNACK, MEAL
-
-6. Create exception handler for order-related errors:
+5. Create exception handler for order-related errors:
    - `InsufficientTokensException` returns:
      ```json
      {
@@ -105,12 +97,12 @@ The Application module requires a REST controller and DTOs to expose order creat
      }
      ```
 
-7. Add OpenAPI annotations:
+6. Add OpenAPI annotations:
    - Document all success/error responses
    - Example request/response bodies
    - Field descriptions for item types/subtypes
 
-8. Create integration tests:
+7. Create integration tests:
    - Test successful order placement (drinks only)
    - Test successful order placement (food only)
    - Test successful order placement (mixed items)
