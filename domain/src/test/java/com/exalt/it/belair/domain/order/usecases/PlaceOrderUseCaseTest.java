@@ -4,12 +4,14 @@ import com.exalt.it.belair.domain.order.exceptions.EmptyOrderException;
 import com.exalt.it.belair.domain.order.exceptions.InsufficientItemInventoryException;
 import com.exalt.it.belair.domain.order.exceptions.InsufficientTokensException;
 import com.exalt.it.belair.domain.order.exceptions.ItemNotFoundInCatalogException;
-import com.exalt.it.belair.domain.order.model.DrinkType;
+import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
 import com.exalt.it.belair.domain.order.model.FestivalGoerBalance;
-import com.exalt.it.belair.domain.order.model.FoodType;
+import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
-import com.exalt.it.belair.domain.order.model.OrderStatus;
+import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.ports.out.IItemInventoryRepository;
+import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.List;
@@ -19,10 +21,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PlaceOrderUseCaseTest {
     
     private PlaceOrderUseCase sut;
+    private TestOrderRepository orderRepository;
+    private TestItemInventoryRepository itemInventoryRepository;
     
     @BeforeEach
     void setUp() {
-        sut = new PlaceOrderUseCase();
+        orderRepository = new TestOrderRepository();
+        itemInventoryRepository = new TestItemInventoryRepository();
+        sut = new PlaceOrderUseCase(orderRepository, itemInventoryRepository);
     }
     
     // ============ HAPPY PATH: Single Item Scenarios ============
@@ -35,12 +41,12 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 1 non-alcoholic drink
-        OrderItem item = OrderItem.createDrinkItem(DrinkType.NON_ALCOHOLIC, 1);
+        OrderItem item = OrderItem.createDrinkItem(DrinkTypeEnum.NON_ALCOHOLIC, 1);
         Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 1 drink item
         assertThat(order.getItems()).hasSize(1);
         // And the total drink token cost is 0
@@ -58,12 +64,12 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 1 normal alcoholic drink
-        OrderItem item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 1);
+        OrderItem item = OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 1);
         Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 1 drink item
         assertThat(order.getItems()).hasSize(1);
         // And the total drink token cost is 1
@@ -81,12 +87,12 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 2 premium alcoholic drinks
-        OrderItem item = OrderItem.createDrinkItem(DrinkType.PREMIUM_ALCOHOLIC, 2);
+        OrderItem item = OrderItem.createDrinkItem(DrinkTypeEnum.PREMIUM_ALCOHOLIC, 2);
         Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 2 drink items
         assertThat(order.getItems()).hasSize(1);
         assertThat(order.getItems().get(0).getQuantity()).isEqualTo(2);
@@ -105,12 +111,12 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 3 snacks
-        OrderItem item = OrderItem.createFoodItem(FoodType.SNACK, 3);
+        OrderItem item = OrderItem.createFoodItem(FoodTypeEnum.SNACK, 3);
         Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 3 food items
         assertThat(order.getItems()).hasSize(1);
         assertThat(order.getItems().get(0).getQuantity()).isEqualTo(3);
@@ -129,12 +135,12 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with 2 meals
-        OrderItem item = OrderItem.createFoodItem(FoodType.MEAL, 2);
+        OrderItem item = OrderItem.createFoodItem(FoodTypeEnum.MEAL, 2);
         Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 2 food items
         assertThat(order.getItems()).hasSize(1);
         assertThat(order.getItems().get(0).getQuantity()).isEqualTo(2);
@@ -160,16 +166,16 @@ class PlaceOrderUseCaseTest {
         // - 2 snacks (cost: 2 snack tokens)
         // - 1 meal (cost: 3 snack tokens)
         List<OrderItem> items = List.of(
-            OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 2),
-            OrderItem.createDrinkItem(DrinkType.NON_ALCOHOLIC, 1),
-            OrderItem.createFoodItem(FoodType.SNACK, 2),
-            OrderItem.createFoodItem(FoodType.MEAL, 1)
+            OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 2),
+            OrderItem.createDrinkItem(DrinkTypeEnum.NON_ALCOHOLIC, 1),
+            OrderItem.createFoodItem(FoodTypeEnum.SNACK, 2),
+            OrderItem.createFoodItem(FoodTypeEnum.MEAL, 1)
         );
         Order order = sut.placeOrder(festivalGoerId, items, balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
         // And the order contains 4 items
         assertThat(order.getItems()).hasSize(4);
         // And the total drink token cost is 2
@@ -194,7 +200,7 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(1, 9);
         
         // WHEN placing an order with 3 normal alcoholic drinks (cost: 3 tokens, but only 1 available)
-        OrderItem item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 3);
+        OrderItem item = OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 3);
         
         // THEN an InsufficientTokensException is raised
         assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
@@ -211,7 +217,7 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 2);
         
         // WHEN placing an order with 3 meals (cost: 9 snack tokens, but only 2 available)
-        OrderItem item = OrderItem.createFoodItem(FoodType.MEAL, 3);
+        OrderItem item = OrderItem.createFoodItem(FoodTypeEnum.MEAL, 3);
         
         // THEN an InsufficientTokensException is raised
         assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
@@ -228,7 +234,7 @@ class PlaceOrderUseCaseTest {
         FestivalGoerBalance balance = new FestivalGoerBalance(0, 0);
         
         // WHEN placing an order with any items
-        OrderItem item = OrderItem.createDrinkItem(DrinkType.PREMIUM_ALCOHOLIC, 1);
+        OrderItem item = OrderItem.createDrinkItem(DrinkTypeEnum.PREMIUM_ALCOHOLIC, 1);
         
         // THEN an InsufficientTokensException is raised
         assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
@@ -297,8 +303,8 @@ class PlaceOrderUseCaseTest {
         
         // WHEN placing an order with 2 normal alcoholic drinks and 1 snack
         List<OrderItem> items = List.of(
-            OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 2),
-            OrderItem.createFoodItem(FoodType.SNACK, 1)
+            OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 2),
+            OrderItem.createFoodItem(FoodTypeEnum.SNACK, 1)
         );
         Order order = sut.placeOrder(festivalGoerId, items, balance);
         
@@ -308,8 +314,54 @@ class PlaceOrderUseCaseTest {
         assertThat(order.getDrinkTokenCost()).isEqualTo(2);
         assertThat(order.getSnackTokenCost()).isEqualTo(1);
     }
-    
-    // ============ PRODUCTION CODE (Inner Classes) ============
-    // All implementation code is in inner classes. Will be extracted in REFACTOR phase.
-    
+
+    // ============ TEST DOUBLES ============
+
+    /**
+     * Test double for IOrderRepository.
+     * Simulates order persistence for testing.
+     */
+    static class TestOrderRepository implements IOrderRepository {
+        @Override
+        public Order save(Order order) {
+            // In tests, simply return the order as-is
+            // (In real implementation, this would persist to database)
+            return order;
+        }
+    }
+
+    /**
+     * Test double for IItemInventoryRepository.
+     * Simulates inventory checks for testing.
+     * 
+     * Rules:
+     * - "unknown-mojito" is not found in catalog
+     * - "mojito" with quantity 3 has insufficient stock (only 1 available)
+     * - All other items are considered available
+     */
+    static class TestItemInventoryRepository implements IItemInventoryRepository {
+        @Override
+        public boolean hasItemInStock(String itemId, int requestedQuantity) {
+            // Simulate item not found in catalog
+            if ("unknown-mojito".equals(itemId)) {
+                throw new ItemNotFoundInCatalogException("Item not found in catalog: " + itemId);
+            }
+            // Simulate insufficient stock for mojito with 3 units
+            if ("mojito".equals(itemId) && requestedQuantity == 3) {
+                return false;
+            }
+            // All other items are assumed to be in stock
+            return true;
+        }
+
+        @Override
+        public int getAvailableQuantity(String itemId) {
+            // Simulate available quantities for test scenarios
+            if ("mojito".equals(itemId)) {
+                return 1; // Only 1 mojito available for testing insufficient stock
+            }
+            // Default: item not found or abundant stock
+            return 0;
+        }
+    }
 }
