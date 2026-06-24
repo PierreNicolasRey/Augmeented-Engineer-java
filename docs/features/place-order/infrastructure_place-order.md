@@ -21,7 +21,7 @@ The Infrastructure module requires JPA entity mapping, database schema, and repo
   - Proper JPA mapping (OneToMany relationship with Order)
   - Mapped to database table `order_items`
   
-- [ ] `OrderRepositoryAdapter` implements Domain's `OrderRepository` port:
+- [ ] `OrderRepositoryAdapter` implements Domain's `IOrderRepository` port:
   - Method: `save(Order): OrderId`
   - Method: `findById(OrderId): Optional<Order>`
   - Method: `findByFestivalGoerId(FestivalGoerId): List<Order>`

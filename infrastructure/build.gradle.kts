@@ -10,4 +10,15 @@ plugins {
 
 dependencies {
     implementation(project(":domain"))
+    
+    // Spring Data JPA for repository pattern (3.5.x LTS)
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa:3.5.2")
+    
+    // H2 in-memory database
+    runtimeOnly("com.h2database:h2:2.2.224")
+    
+    // Test dependencies
+    testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.2") {
+        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+    }
 }
