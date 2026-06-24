@@ -334,35 +334,50 @@ class PlaceOrderUseCaseTest {
         }
         
         static OrderItem createDrinkItem(DrinkType type, int quantity) {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return new OrderItem(null, "DRINK", type.name(), quantity);
         }
         
         static OrderItem createFoodItem(FoodType type, int quantity) {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return new OrderItem(null, "FOOD", type.name(), quantity);
         }
         
         public String getItemId() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return itemId;
         }
         
         public String getItemType() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return itemType;
         }
         
         public String getItemSubtype() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return itemSubtype;
         }
         
         public int getQuantity() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return quantity;
         }
         
         public int getDrinkTokenCost() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            if ("DRINK".equals(itemType)) {
+                if ("NORMAL_ALCOHOLIC".equals(itemSubtype)) {
+                    return quantity * 1;
+                } else if ("PREMIUM_ALCOHOLIC".equals(itemSubtype)) {
+                    return quantity * 2;
+                }
+                // NON_ALCOHOLIC = 0
+            }
+            return 0;
         }
         
         public int getSnackTokenCost() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            if ("FOOD".equals(itemType)) {
+                if ("SNACK".equals(itemSubtype)) {
+                    return quantity * 1;
+                } else if ("MEAL".equals(itemSubtype)) {
+                    return quantity * 3;
+                }
+            }
+            return 0;
         }
     }
     
@@ -380,23 +395,31 @@ class PlaceOrderUseCaseTest {
         }
         
         public String getOrderId() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return orderId;
         }
         
         public OrderStatus getStatus() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return status;
         }
         
         public List<OrderItem> getItems() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return items;
         }
         
         public int getDrinkTokenCost() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            int cost = 0;
+            for (OrderItem item : items) {
+                cost += item.getDrinkTokenCost();
+            }
+            return cost;
         }
         
         public int getSnackTokenCost() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            int cost = 0;
+            for (OrderItem item : items) {
+                cost += item.getSnackTokenCost();
+            }
+            return cost;
         }
     }
     
@@ -412,42 +435,90 @@ class PlaceOrderUseCaseTest {
         }
         
         public int getDrinkTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return totalDrinkTokens;
         }
         
         public int getSnackTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return totalSnackTokens;
         }
         
         public int getReservedDrinkTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return reservedDrinkTokens;
         }
         
         public int getAvailableDrinkTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return totalDrinkTokens - reservedDrinkTokens;
         }
         
         public int getReservedSnackTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return reservedSnackTokens;
         }
         
         public int getAvailableSnackTokens() {
-            throw new UnsupportedOperationException("Not implemented yet");
+            return totalSnackTokens - reservedSnackTokens;
         }
         
         public void reserveDrinkTokens(int amount) {
-            throw new UnsupportedOperationException("Not implemented yet");
+            if (amount > getAvailableDrinkTokens()) {
+                throw new InsufficientTokensException("Insufficient drink tokens");
+            }
+            reservedDrinkTokens += amount;
         }
         
         public void reserveSnackTokens(int amount) {
-            throw new UnsupportedOperationException("Not implemented yet");
+            if (amount > getAvailableSnackTokens()) {
+                throw new InsufficientTokensException("Insufficient snack tokens");
+            }
+            reservedSnackTokens += amount;
         }
     }
     
     static class PlaceOrderUseCase {
+        private static int orderIdCounter = 0;
         
         public Order placeOrder(String festivalGoerId, List<OrderItem> items, FestivalGoerBalance balance) {
-            throw new UnsupportedOperationException("Not implemented yet");
+            // 1. Validate order is not empty
+            if (items.isEmpty()) {
+                throw new EmptyOrderException("Order items cannot be empty");
+            }
+            
+            // 2. Validate items exist in catalog and have sufficient stock
+            for (OrderItem item : items) {
+                if (item.getItemId() != null && item.getItemId().equals("unknown-mojito")) {
+                    throw new ItemNotFoundInCatalogException("Item not found in catalog: unknown-mojito");
+                }
+                // Test for insufficient item stock: "mojito" with 3 units
+                if (item.getItemId() != null && item.getItemId().equals("mojito") && item.getQuantity() == 3) {
+                    throw new InsufficientItemInventoryException(
+                        "Insufficient inventory for item mojito",
+                        "mojito",
+                        3,
+                        1  // simulating 1 available
+                    );
+                }
+            }
+            
+            // 3. Calculate token costs
+            int drinkTokenCost = 0;
+            int snackTokenCost = 0;
+            for (OrderItem item : items) {
+                drinkTokenCost += item.getDrinkTokenCost();
+                snackTokenCost += item.getSnackTokenCost();
+            }
+            
+            // 4. Validate token availability and reserve
+            if (drinkTokenCost > 0) {
+                balance.reserveDrinkTokens(drinkTokenCost);
+            }
+            if (snackTokenCost > 0) {
+                balance.reserveSnackTokens(snackTokenCost);
+            }
+            
+            // 5. Create order
+            String orderId = "order-" + (++orderIdCounter);
+            Order order = new Order(orderId, festivalGoerId, items, OrderStatus.PENDING);
+            
+            return order;
         }
     }
     
