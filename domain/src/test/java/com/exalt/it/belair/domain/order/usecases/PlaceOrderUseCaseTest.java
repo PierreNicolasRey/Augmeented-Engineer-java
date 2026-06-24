@@ -1,206 +1,498 @@
 package com.exalt.it.belair.domain.order.usecases;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PlaceOrderUseCaseTest {
     
-    private PlaceOrderUseCase sut;  // System Under Test
+    private PlaceOrderUseCase sut;
     
-    // ============ HAPPY PATH: Single Drink Scenarios ============
-    
-    @Test
-    void placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNormalAlcoholicDrink() {
-        // GIVEN a festival goer with ID "fgv-001"
-        String festivalGoerId = "fgv-001";
-        // And the festival goer has 6 drink tokens and 9 snack tokens
-        int drinkTokens = 6;
-        int snackTokens = 9;
-        
-        // WHEN placing an order with 1 normal alcoholic drink
+    @BeforeEach
+    void setUp() {
         sut = new PlaceOrderUseCase();
-        var item = OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 1);
-        Order order = sut.placeOrder(festivalGoerId, item, drinkTokens, snackTokens);
-        
-        // THEN an Order is created with status PENDING
-        assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
-        // And the order contains 1 drink item
-        assertThat(order.getItemCount()).isEqualTo(1);
-        // And the total drink token cost is 1
-        assertThat(order.getDrinkTokenCost()).isEqualTo(1);
     }
     
+    // ============ HAPPY PATH: Single Item Scenarios ============
+    
     @Test
-    void placeOrder_shouldCreateOrderWithZeroDrinkTokensCost_whenPlacingOrderWithNonAlcoholicDrinks() {
+    void placeOrder_shouldCreateOrderWithPendingStatus_whenPlacingOrderWithSingleNonAlcoholicDrink() {
         // GIVEN a festival goer with ID "fgv-001"
         String festivalGoerId = "fgv-001";
         // And the festival goer has 6 drink tokens and 9 snack tokens
-        int drinkTokens = 6;
-        int snackTokens = 9;
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
-        // WHEN placing an order with 3 non-alcoholic drinks
-        sut = new PlaceOrderUseCase();
-        var item = OrderItem.createDrinkItem(DrinkTypeEnum.NON_ALCOHOLIC, 3);
-        Order order = sut.placeOrder(festivalGoerId, item, drinkTokens, snackTokens);
+        // WHEN placing an order with 1 non-alcoholic drink
+        OrderItem item = OrderItem.createDrinkItem(DrinkType.NON_ALCOHOLIC, 1);
+        Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
-        // And the order contains 3 drink items
-        assertThat(order.getItemCount()).isEqualTo(3);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 1 drink item
+        assertThat(order.getItems()).hasSize(1);
         // And the total drink token cost is 0
         assertThat(order.getDrinkTokenCost()).isEqualTo(0);
+        // And the festival goer's token balance is not changed
+        assertThat(balance.getDrinkTokens()).isEqualTo(6);
+        assertThat(balance.getSnackTokens()).isEqualTo(9);
     }
     
     @Test
-    void placeOrder_shouldCreateOrderWithFourDrinkTokensCost_whenPlacingOrderWithPremiumDrinks() {
+    void placeOrder_shouldReserveTokens_whenPlacingOrderWithSingleNormalAlcoholicDrink() {
         // GIVEN a festival goer with ID "fgv-001"
         String festivalGoerId = "fgv-001";
         // And the festival goer has 6 drink tokens and 9 snack tokens
-        int drinkTokens = 6;
-        int snackTokens = 9;
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
-        // WHEN placing an order with 2 premium alcoholic drinks
-        sut = new PlaceOrderUseCase();
-        var item = OrderItem.createDrinkItem(DrinkTypeEnum.PREMIUM_ALCOHOLIC, 2);
-        Order order = sut.placeOrder(festivalGoerId, item, drinkTokens, snackTokens);
+        // WHEN placing an order with 1 normal alcoholic drink
+        OrderItem item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 1);
+        Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
-        // And the order contains 2 drink items
-        assertThat(order.getItemCount()).isEqualTo(2);
-        // And the total drink token cost is 4
-        assertThat(order.getDrinkTokenCost()).isEqualTo(4);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 1 drink item
+        assertThat(order.getItems()).hasSize(1);
+        // And the total drink token cost is 1
+        assertThat(order.getDrinkTokenCost()).isEqualTo(1);
+        // And the festival goer's drink tokens are reserved (1 reserved, 5 available)
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(1);
+        assertThat(balance.getAvailableDrinkTokens()).isEqualTo(5);
     }
     
-    // ============ HAPPY PATH: Complex Mixed Scenarios ============
-    
     @Test
-    void placeOrder_shouldCreateOrderWithCorrectTokenCosts_whenPlacingComplexMixedOrder() {
+    void placeOrder_shouldReserveCorrectCost_whenPlacingOrderWithPremiumAlcoholicDrinks() {
         // GIVEN a festival goer with ID "fgv-001"
         String festivalGoerId = "fgv-001";
         // And the festival goer has 6 drink tokens and 9 snack tokens
-        int drinkTokens = 6;
-        int snackTokens = 9;
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        
+        // WHEN placing an order with 2 premium alcoholic drinks
+        OrderItem item = OrderItem.createDrinkItem(DrinkType.PREMIUM_ALCOHOLIC, 2);
+        Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
+        
+        // THEN an Order is created with status PENDING
+        assertThat(order).isNotNull();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 2 drink items
+        assertThat(order.getItems()).hasSize(1);
+        assertThat(order.getItems().get(0).getQuantity()).isEqualTo(2);
+        // And the total drink token cost is 4
+        assertThat(order.getDrinkTokenCost()).isEqualTo(4);
+        // And the festival goer's drink tokens are reserved (4 reserved, 2 available)
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(4);
+        assertThat(balance.getAvailableDrinkTokens()).isEqualTo(2);
+    }
+    
+    @Test
+    void placeOrder_shouldReserveSnackTokens_whenPlacingOrderWithSnacks() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 6 drink tokens and 9 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        
+        // WHEN placing an order with 3 snacks
+        OrderItem item = OrderItem.createFoodItem(FoodType.SNACK, 3);
+        Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
+        
+        // THEN an Order is created with status PENDING
+        assertThat(order).isNotNull();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 3 food items
+        assertThat(order.getItems()).hasSize(1);
+        assertThat(order.getItems().get(0).getQuantity()).isEqualTo(3);
+        // And the total snack token cost is 3
+        assertThat(order.getSnackTokenCost()).isEqualTo(3);
+        // And the festival goer's snack tokens are reserved (3 reserved, 6 available)
+        assertThat(balance.getReservedSnackTokens()).isEqualTo(3);
+        assertThat(balance.getAvailableSnackTokens()).isEqualTo(6);
+    }
+    
+    @Test
+    void placeOrder_shouldReserveCorrectCost_whenPlacingOrderWithMeals() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 6 drink tokens and 9 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        
+        // WHEN placing an order with 2 meals
+        OrderItem item = OrderItem.createFoodItem(FoodType.MEAL, 2);
+        Order order = sut.placeOrder(festivalGoerId, List.of(item), balance);
+        
+        // THEN an Order is created with status PENDING
+        assertThat(order).isNotNull();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 2 food items
+        assertThat(order.getItems()).hasSize(1);
+        assertThat(order.getItems().get(0).getQuantity()).isEqualTo(2);
+        // And the total snack token cost is 6 (2 meals * 3 tokens per meal)
+        assertThat(order.getSnackTokenCost()).isEqualTo(6);
+        // And the festival goer's snack tokens are reserved (6 reserved, 3 available)
+        assertThat(balance.getReservedSnackTokens()).isEqualTo(6);
+        assertThat(balance.getAvailableSnackTokens()).isEqualTo(3);
+    }
+    
+    // ============ HAPPY PATH: Complex Mixed Order Scenarios ============
+    
+    @Test
+    void placeOrder_shouldReserveCorrectCosts_whenPlacingMixedOrder() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 6 drink tokens and 9 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
         
         // WHEN placing an order with:
         // - 2 normal alcoholic drinks (cost: 2 drink tokens)
         // - 1 non-alcoholic drink (cost: 0 drink tokens)
         // - 2 snacks (cost: 2 snack tokens)
         // - 1 meal (cost: 3 snack tokens)
-        sut = new PlaceOrderUseCase();
         List<OrderItem> items = List.of(
-            OrderItem.createDrinkItem(DrinkTypeEnum.NORMAL_ALCOHOLIC, 2),
-            OrderItem.createDrinkItem(DrinkTypeEnum.NON_ALCOHOLIC, 1)
+            OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 2),
+            OrderItem.createDrinkItem(DrinkType.NON_ALCOHOLIC, 1),
+            OrderItem.createFoodItem(FoodType.SNACK, 2),
+            OrderItem.createFoodItem(FoodType.MEAL, 1)
         );
-        Order order = sut.placeOrder(festivalGoerId, items, drinkTokens, snackTokens);
+        Order order = sut.placeOrder(festivalGoerId, items, balance);
         
         // THEN an Order is created with status PENDING
         assertThat(order).isNotNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatusEnum.PENDING);
-        // And the order contains 4 order items total
-        assertThat(order.getItemCount()).isEqualTo(4);
-        // And the drink tokens cost is 2
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        // And the order contains 4 items
+        assertThat(order.getItems()).hasSize(4);
+        // And the total drink token cost is 2
         assertThat(order.getDrinkTokenCost()).isEqualTo(2);
-        // And the snack tokens cost is 5
+        // And the total snack token cost is 5 (2 + 3)
         assertThat(order.getSnackTokenCost()).isEqualTo(5);
+        // And the festival goer's drink tokens are reserved (2 reserved, 4 available)
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(2);
+        assertThat(balance.getAvailableDrinkTokens()).isEqualTo(4);
+        // And the festival goer's snack tokens are reserved (5 reserved, 4 available)
+        assertThat(balance.getReservedSnackTokens()).isEqualTo(5);
+        assertThat(balance.getAvailableSnackTokens()).isEqualTo(4);
+    }
+    
+    // ============ ERROR CASES: Insufficient Tokens ============
+    
+    @Test
+    void placeOrder_shouldThrowException_whenInsufficientDrinkTokens() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 1 drink token and 9 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(1, 9);
+        
+        // WHEN placing an order with 3 normal alcoholic drinks (cost: 3 tokens, but only 1 available)
+        OrderItem item = OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 3);
+        
+        // THEN an InsufficientTokensException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
+            .isInstanceOf(InsufficientTokensException.class);
+        // And no Order is created / balance is unchanged
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(0);
+    }
+    
+    @Test
+    void placeOrder_shouldThrowException_whenInsufficientSnackTokens() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 6 drink tokens and 2 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 2);
+        
+        // WHEN placing an order with 3 meals (cost: 9 snack tokens, but only 2 available)
+        OrderItem item = OrderItem.createFoodItem(FoodType.MEAL, 3);
+        
+        // THEN an InsufficientTokensException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
+            .isInstanceOf(InsufficientTokensException.class);
+        // And the festival goer's balance is unchanged
+        assertThat(balance.getReservedSnackTokens()).isEqualTo(0);
+    }
+    
+    @Test
+    void placeOrder_shouldThrowException_whenInsufficientBothTokenTypes() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        // And the festival goer has 0 drink tokens and 0 snack tokens
+        FestivalGoerBalance balance = new FestivalGoerBalance(0, 0);
+        
+        // WHEN placing an order with any items
+        OrderItem item = OrderItem.createDrinkItem(DrinkType.PREMIUM_ALCOHOLIC, 1);
+        
+        // THEN an InsufficientTokensException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
+            .isInstanceOf(InsufficientTokensException.class);
+    }
+    
+    // ============ ERROR CASES: Empty Order ============
+    
+    @Test
+    void placeOrder_shouldThrowException_whenOrderIsEmpty() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        
+        // WHEN placing an order with 0 items
+        // THEN an EmptyOrderException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(), balance))
+            .isInstanceOf(EmptyOrderException.class);
+    }
+    
+    // ============ ERROR CASES: Item Inventory Validation ============
+    
+    @Test
+    void placeOrder_shouldThrowException_whenItemNotFoundInCatalog() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        // And the catalog does not contain item "unknown-mojito"
+        
+        // WHEN placing an order for an item that doesn't exist in inventory
+        OrderItem item = new OrderItem("unknown-mojito", "DRINK", "NORMAL_ALCOHOLIC", 2);
+        
+        // THEN an ItemNotFoundInCatalogException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
+            .isInstanceOf(ItemNotFoundInCatalogException.class);
+        // And no Order is created / balance is unchanged
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(0);
+        assertThat(balance.getReservedSnackTokens()).isEqualTo(0);
+    }
+    
+    @Test
+    void placeOrder_shouldThrowException_whenInsufficientItemStock() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        // And the following item is in inventory with limited stock
+        // (stock will be provided via ItemAvailabilityService)
+        
+        // WHEN placing an order for more items than available in stock
+        OrderItem item = new OrderItem("mojito", "DRINK", "NORMAL_ALCOHOLIC", 3);
+        
+        // THEN an InsufficientItemInventoryException is raised
+        assertThatThrownBy(() -> sut.placeOrder(festivalGoerId, List.of(item), balance))
+            .isInstanceOf(InsufficientItemInventoryException.class);
+        // And no Order is created / balance is unchanged
+        assertThat(balance.getReservedDrinkTokens()).isEqualTo(0);
+    }
+    
+    // ============ EVENT PUBLISHING ============
+    
+    @Test
+    void placeOrder_shouldPublishOrderPlacedEvent_whenOrderIsSuccessful() {
+        // GIVEN a festival goer with ID "fgv-001"
+        String festivalGoerId = "fgv-001";
+        FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
+        
+        // WHEN placing an order with 2 normal alcoholic drinks and 1 snack
+        List<OrderItem> items = List.of(
+            OrderItem.createDrinkItem(DrinkType.NORMAL_ALCOHOLIC, 2),
+            OrderItem.createFoodItem(FoodType.SNACK, 1)
+        );
+        Order order = sut.placeOrder(festivalGoerId, items, balance);
+        
+        // THEN an OrderPlacedEvent is published with correct values
+        // (Event verification would be done via EventCapture in GREEN phase)
+        assertThat(order).isNotNull();
+        assertThat(order.getDrinkTokenCost()).isEqualTo(2);
+        assertThat(order.getSnackTokenCost()).isEqualTo(1);
     }
     
     // ============ PRODUCTION CODE (Inner Classes) ============
-    // Note: All implementation code is written as inner classes inside the test.
-    // This code will be extracted to src/main/java during the REFACTOR phase.
+    // All implementation code is in inner classes. Will be extracted in REFACTOR phase.
     
-    enum DrinkTypeEnum {
+    enum DrinkType {
         NON_ALCOHOLIC,
         NORMAL_ALCOHOLIC,
         PREMIUM_ALCOHOLIC
     }
     
-    enum OrderStatusEnum {
-        PENDING
+    enum FoodType {
+        SNACK,
+        MEAL
+    }
+    
+    enum OrderStatus {
+        PENDING,
+        ACKNOWLEDGED,
+        READY,
+        CANCELLED
     }
     
     static class OrderItem {
-        private final DrinkTypeEnum drinkType;
+        private final String itemId;
+        private final String itemType;
+        private final String itemSubtype;
         private final int quantity;
         
-        private OrderItem(DrinkTypeEnum drinkType, int quantity) {
-            this.drinkType = drinkType;
+        OrderItem(String itemId, String itemType, String itemSubtype, int quantity) {
+            this.itemId = itemId;
+            this.itemType = itemType;
+            this.itemSubtype = itemSubtype;
             this.quantity = quantity;
         }
         
-        public static OrderItem createDrinkItem(DrinkTypeEnum type, int quantity) {
-            return new OrderItem(type, quantity);
+        static OrderItem createDrinkItem(DrinkType type, int quantity) {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
         
-        public DrinkTypeEnum getDrinkType() {
-            return drinkType;
+        static OrderItem createFoodItem(FoodType type, int quantity) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public String getItemId() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public String getItemType() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public String getItemSubtype() {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
         
         public int getQuantity() {
-            return quantity;
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getDrinkTokenCost() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getSnackTokenCost() {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
     }
     
     static class Order {
+        private final String orderId;
+        private final String festivalGoerId;
         private final List<OrderItem> items;
+        private final OrderStatus status;
         
-        public Order(OrderItem item) {
-            this.items = List.of(item);
-        }
-        
-        public Order(List<OrderItem> items) {
+        Order(String orderId, String festivalGoerId, List<OrderItem> items, OrderStatus status) {
+            this.orderId = orderId;
+            this.festivalGoerId = festivalGoerId;
             this.items = items;
+            this.status = status;
         }
         
-        public OrderStatusEnum getStatus() {
-            return OrderStatusEnum.PENDING;
+        public String getOrderId() {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
         
-        public int getItemCount() {
-            int count = 0;
-            for (OrderItem item : items) {
-                count += item.getQuantity();
-            }
-            return count;
+        public OrderStatus getStatus() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public List<OrderItem> getItems() {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
         
         public int getDrinkTokenCost() {
-            int cost = 0;
-            for (OrderItem item : items) {
-                if (item.getDrinkType() == DrinkTypeEnum.NORMAL_ALCOHOLIC) {
-                    cost += item.getQuantity();  // 1 token per normal alcoholic drink
-                } else if (item.getDrinkType() == DrinkTypeEnum.PREMIUM_ALCOHOLIC) {
-                    cost += item.getQuantity() * 2;  // 2 tokens per premium alcoholic drink
-                }
-                // NON_ALCOHOLIC drinks cost 0 tokens
-            }
-            return cost;
+            throw new UnsupportedOperationException("Not implemented yet");
         }
         
         public int getSnackTokenCost() {
-            // For now, hardcoded for the test - will implement proper logic in REFACTOR
-            // Test expects 5 when given 2 normal + 1 non-alcoholic drinks
-            // This is a placeholder to make the complex test pass
-            if (items.size() > 0 && items.get(0).getQuantity() == 2) {
-                // Return 5 for the complex scenario test
-                return 5;
-            }
-            return 0;
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    static class FestivalGoerBalance {
+        private int totalDrinkTokens;
+        private int totalSnackTokens;
+        private int reservedDrinkTokens = 0;
+        private int reservedSnackTokens = 0;
+        
+        FestivalGoerBalance(int drinkTokens, int snackTokens) {
+            this.totalDrinkTokens = drinkTokens;
+            this.totalSnackTokens = snackTokens;
+        }
+        
+        public int getDrinkTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getSnackTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getReservedDrinkTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getAvailableDrinkTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getReservedSnackTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public int getAvailableSnackTokens() {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public void reserveDrinkTokens(int amount) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+        
+        public void reserveSnackTokens(int amount) {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
     }
     
     static class PlaceOrderUseCase {
         
-        public Order placeOrder(String festivalGoerId, OrderItem item, int drinkTokens, int snackTokens) {
-            return new Order(item);
+        public Order placeOrder(String festivalGoerId, List<OrderItem> items, FestivalGoerBalance balance) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+    }
+    
+    // ============ EXCEPTION CLASSES ============
+    
+    static class InsufficientTokensException extends RuntimeException {
+        InsufficientTokensException(String message) {
+            super(message);
+        }
+    }
+    
+    static class EmptyOrderException extends RuntimeException {
+        EmptyOrderException(String message) {
+            super(message);
+        }
+    }
+    
+    static class ItemNotFoundInCatalogException extends RuntimeException {
+        ItemNotFoundInCatalogException(String message) {
+            super(message);
+        }
+    }
+    
+    static class InsufficientItemInventoryException extends RuntimeException {
+        private final String itemId;
+        private final int requestedQuantity;
+        private final int availableQuantity;
+        
+        InsufficientItemInventoryException(String message, String itemId, int requestedQuantity, int availableQuantity) {
+            super(message);
+            this.itemId = itemId;
+            this.requestedQuantity = requestedQuantity;
+            this.availableQuantity = availableQuantity;
         }
         
-        public Order placeOrder(String festivalGoerId, List<OrderItem> items, int drinkTokens, int snackTokens) {
-            return new Order(items);
+        public String getItemId() {
+            return itemId;
+        }
+        
+        public int getRequestedQuantity() {
+            return requestedQuantity;
+        }
+        
+        public int getAvailableQuantity() {
+            return availableQuantity;
         }
     }
 }
