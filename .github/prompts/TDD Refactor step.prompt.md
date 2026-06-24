@@ -80,8 +80,12 @@ During REFACTOR, we extract inner classes from the test file to production modul
    - Use Cases → `domain/src/main/java/com/it/exalt/belair/domain/[module]/usecases/`
    - Domain Services → `domain/src/main/java/com/it/exalt/belair/domain/[module]/services/`
 
-2. **Maintain code coherence**
-   - If production code already exists for a class that you have to modify, do NOT create a duplicate class or method. Adapt it to comply with the scenario requirements WITHOUT breaking existing functionality.
+2. **Maintain code coherence & Adapt Existing Models**
+   - **CRITICAL:** During REFACTOR, actively refactor and adapt existing Domain/Application/Infrastructure code if it's not fully aligned with the new feature requirements
+   - **PREFER extending existing models** (e.g., add `itemId` field to `OrderItem`) over creating parallel classes (e.g., do NOT create `OrderItemWithId` if `OrderItem` can be adapted)
+   - Only create new classes/models when existing ones **cannot logically accommodate** the new behavior without fundamental architectural violation
+   - If production code already exists for a class that you have to modify, do NOT create a duplicate class or method. Adapt it to comply with the scenario requirements WITHOUT breaking existing functionality
+   - Example: If `OrderItem` needs an `itemId` to validate stock, add the field directly to `OrderItem` rather than creating `OrderItemWithId` alongside it
 
 3. **Clean code without changing behavior**
    - Remove test-only comments and setup code not needed in production
@@ -211,6 +215,52 @@ domain/src/main/java/com/it/exalt/belair/domain/order/
 └─ usecases/
    └─ PlaceOrderUseCase.java ← class (command handler)
 ```
+
+## Code Adaptation & Refactoring During REFACTOR Phase
+
+**🚨 PROACTIVE CODE ADAPTATION IS MANDATORY during REFACTOR, not optional.**
+
+When extracting classes to production files, you have the **explicit right and responsibility** to refactor existing Domain/Application/Infrastructure code that doesn't fully align with new feature requirements:
+
+### When to Actively Adapt Existing Models:
+- ✅ **Add fields** to existing entities/records if the new feature requires them (e.g., add `itemId` to `OrderItem` for inventory validation)
+- ✅ **Add methods** to existing classes if they support the new feature's behavior
+- ✅ **Rename fields/methods** if current names are confusing or don't match the new requirements
+- ✅ **Extend existing repositories/ports** with new query methods needed by the new feature
+- ✅ **Combine related functionality** if it logically belongs together (e.g., item cost calculations and item ID in the same `OrderItem`)
+- ✅ **Update constructors/factory methods** to accommodate new parameters needed by the feature
+
+### When NOT to Create Parallel/Duplicate Classes:
+- ❌ DO NOT create `OrderItemWithId` if you can add `itemId` to existing `OrderItem`
+- ❌ DO NOT create a second `TokenReservation` class if `TokenBalance` can accommodate reservation logic
+- ❌ DO NOT create parallel ports (e.g., `ItemRepositoryV2`) when extending the existing `ItemRepository` would work
+- ❌ DO NOT leave duplicated concepts in the codebase when consolidation is possible
+- ❌ DO NOT create wrapper classes that duplicate domain logic
+
+### Guardrails for Code Adaptation:
+- **Maintain test compatibility:** Changes must not break the GREEN tests from extraction phase
+- **Keep behavior identical:** Adaptations are structural/architectural, not behavioral changes
+- **Within-layer adaptation only:** Adapt Domain within Domain layer, Application within Application, etc.
+- **Architecture-respecting:** Do NOT introduce cross-layer dependencies when adapting
+- **Framework-annotation-free:** Keep Domain models clean of framework annotations even when adapting
+- **Documented intent:** If adaptation significantly changes a class's responsibility, add a comment explaining why
+
+### Adaptation Strategy Example:
+**Before:**
+```java
+// In test: OrderItem with just type and quantity
+record OrderItem(String type, int quantity) {}
+```
+
+**After extraction + adaptation:**
+```java
+// In production: OrderItem now also needs itemId for inventory validation
+record OrderItem(String itemId, String type, int quantity) {}
+```
+- This is **correct adaptation**
+- Do NOT create `OrderItemWithId` alongside the existing `OrderItem`
+- Update existing usages to pass `itemId` in the new required position
+- Tests remain GREEN because behavior is unchanged
 
 ## Code Cleanup Guidelines
 

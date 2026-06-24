@@ -1,9 +1,9 @@
-package com.exalt.it.belair.application.order.rest;
+package com.exalt.it.belair.application.rest.order;
 
-import com.exalt.it.belair.application.order.dto.PlaceOrderRequest;
-import com.exalt.it.belair.application.order.dto.PlaceOrderResponse;
-import com.exalt.it.belair.application.order.mapper.PlaceOrderRequestMapper;
-import com.exalt.it.belair.application.order.mapper.PlaceOrderResponseMapper;
+import com.exalt.it.belair.application.dto.PlaceOrderRequest;
+import com.exalt.it.belair.application.dto.PlaceOrderResponse;
+import com.exalt.it.belair.application.mapper.PlaceOrderRequestMapper;
+import com.exalt.it.belair.application.mapper.PlaceOrderResponseMapper;
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.PlaceOrderCommand;
 import com.exalt.it.belair.domain.order.ports.in.PlaceOrderUseCasePort;
