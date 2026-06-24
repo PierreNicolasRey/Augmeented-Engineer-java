@@ -16,6 +16,7 @@ import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.List;
+import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -330,6 +331,13 @@ class PlaceOrderUseCaseTest {
             // In tests, simply return the order as-is
             // (In real implementation, this would persist to database)
             return order;
+        }
+        
+        @Override
+        public Optional<Order> findById(String orderId) {
+            // In tests, not used for place-order feature
+            // (Implemented for future features that retrieve orders)
+            return Optional.empty();
         }
     }
 
