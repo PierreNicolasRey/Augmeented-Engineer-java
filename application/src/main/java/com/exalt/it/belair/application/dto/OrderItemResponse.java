@@ -1,4 +1,4 @@
-package com.exalt.it.belair.application.order.dto;
+package com.exalt.it.belair.application.dto;
 
 public record OrderItemResponse(
         String itemType,

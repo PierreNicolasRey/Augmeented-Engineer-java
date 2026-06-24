@@ -1,7 +1,7 @@
-package com.exalt.it.belair.application.order.mapper;
+package com.exalt.it.belair.application.mapper;
 
-import com.exalt.it.belair.application.order.dto.OrderItemRequest;
-import com.exalt.it.belair.application.order.dto.PlaceOrderRequest;
+import com.exalt.it.belair.application.dto.OrderItemRequest;
+import com.exalt.it.belair.application.dto.PlaceOrderRequest;
 import com.exalt.it.belair.domain.order.model.OrderItemCommand;
 import com.exalt.it.belair.domain.order.model.PlaceOrderCommand;
 import java.util.List;
