@@ -9,22 +9,15 @@ import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Integration tests for OrderRepositoryAdapter.
  * Tests the persistence layer (Infrastructure) adapter that bridges Domain and JPA.
  * 
- * All production code is in inner classes (RED phase - no src/main/java files).
  * Tests verify that Orders can be saved to and retrieved from the database.
  */
 class OrderRepositoryAdapterIntegrationTest {
@@ -160,75 +153,5 @@ class OrderRepositoryAdapterIntegrationTest {
         
         // THEN no order is returned (Optional.empty())
         assertThat(retrievedOrder).isEmpty();
-    }
-    
-    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW (GREEN PHASE) ============
-    
-    /**
-     * Adapter for IOrderRepository port.
-     * Bridges Domain Order models to JPA persistence layer.
-     * GREEN phase: Minimal in-memory store implementation to pass tests.
-     * No actual JPA/database interaction yet (that's REFACTOR phase).
-     */
-    static class OrderRepositoryAdapter implements IOrderRepository {
-        
-        /**
-         * In-memory store for orders (GREEN phase: minimal implementation).
-         * Maps Order ID to Order domain model.
-         */
-        private static final java.util.Map<String, Order> STORE = new java.util.HashMap<>();
-        
-        /**
-         * Constructs adapter and initializes store.
-         */
-        OrderRepositoryAdapter() {
-            STORE.clear();  // Fresh state for each test
-        }
-        
-        /**
-         * Save an order to in-memory store.
-         * GREEN phase: minimal logic - just store and return.
-         * 
-         * @param order the domain Order to persist
-         * @return the saved order
-         */
-        @Override
-        public Order save(Order order) {
-            // Minimal: store the order by ID and return it
-            STORE.put(order.getOrderId(), order);
-            return order;
-        }
-        
-        /**
-         * Find an order by ID from in-memory store.
-         * GREEN phase: minimal logic - retrieve from map.
-         * 
-         * @param orderId the order ID to retrieve
-         * @return Optional containing the order, or empty if not found
-         */
-        @Override
-        public Optional<Order> findById(String orderId) {
-            // Minimal: retrieve from store, return Optional
-            return Optional.ofNullable(STORE.get(orderId));
-        }
-    }
-    
-    /**
-     * JPA Entity mapping for Order persistence.
-     * Represents the 'orders' database table.
-     * GREEN phase: minimal fields required by test assertions.
-     * Full JPA integration happens in REFACTOR phase.
-     */
-    @Entity
-    @Table(name = "orders")
-    static class OrderJpaEntity {
-        @Id
-        String id;
-        
-        @Column(name = "festival_goer_id")
-        String festivalGoerId;
-        
-        @Column
-        String status;
     }
 }
