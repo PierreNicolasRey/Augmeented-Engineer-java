@@ -36,6 +36,14 @@ public class Order {
     }
 
     /**
+     * Gets the festival goer ID who placed this order.
+     * @return the festival goer ID
+     */
+    public String getFestivalGoerId() {
+        return festivalGoerId;
+    }
+
+    /**
      * Gets the current status of this order.
      * @return the order status
      */

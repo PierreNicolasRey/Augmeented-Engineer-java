@@ -3,10 +3,16 @@ package com.exalt.it.belair.domain.order.usecases;
 import com.exalt.it.belair.domain.order.exceptions.EmptyOrderException;
 import com.exalt.it.belair.domain.order.exceptions.InsufficientItemInventoryException;
 import com.exalt.it.belair.domain.order.exceptions.ItemNotFoundInCatalogException;
+import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
 import com.exalt.it.belair.domain.order.model.FestivalGoerBalance;
+import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.OrderItemCommand;
 import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.model.PlaceOrderCommand;
+import com.exalt.it.belair.domain.order.ports.in.PlaceOrderUseCasePort;
+import com.exalt.it.belair.domain.order.ports.out.IFestivalGoerRepository;
 import com.exalt.it.belair.domain.order.ports.out.IItemInventoryRepository;
 import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import java.util.List;
@@ -26,19 +32,79 @@ import java.util.UUID;
  * Respects the Hexagonal Architecture by delegating persistence and inventory checks
  * to outbound ports (IOrderRepository, IItemInventoryRepository).
  */
-public class PlaceOrderUseCase {
+public class PlaceOrderUseCase implements PlaceOrderUseCasePort {
     private final IOrderRepository orderRepository;
     private final IItemInventoryRepository itemInventoryRepository;
+    private final IFestivalGoerRepository festivalGoerRepository;
 
     /**
      * Constructs a PlaceOrderUseCase with the required outbound port dependencies.
      * 
      * @param orderRepository the port for persisting orders
      * @param itemInventoryRepository the port for checking item availability and inventory
+     * @param festivalGoerRepository the port for retrieving festival goer balance information
      */
-    public PlaceOrderUseCase(IOrderRepository orderRepository, IItemInventoryRepository itemInventoryRepository) {
+    public PlaceOrderUseCase(
+            IOrderRepository orderRepository,
+            IItemInventoryRepository itemInventoryRepository,
+            IFestivalGoerRepository festivalGoerRepository
+    ) {
         this.orderRepository = orderRepository;
         this.itemInventoryRepository = itemInventoryRepository;
+        this.festivalGoerRepository = festivalGoerRepository;
+    }
+
+    /**
+     * Implements the inbound PlaceOrderUseCasePort.
+     * Entry point for the Application layer.
+     * 
+     * Converts the command to domain models and orchestrates the order placement.
+     * 
+     * @param command the place order command containing festival goer ID and items
+     * @return the created and persisted Order
+     * 
+     * @throws com.exalt.it.belair.domain.order.exceptions.FestivalGoerNotFoundException if festival goer not found
+     * @throws EmptyOrderException if no items in the order
+     * @throws ItemNotFoundInCatalogException if any item not in catalog
+     * @throws InsufficientItemInventoryException if any item insufficient stock
+     * @throws com.exalt.it.belair.domain.order.exceptions.InsufficientTokensException if insufficient tokens
+     */
+    @Override
+    public Order placeOrder(PlaceOrderCommand command) {
+        // 1. Retrieve festival goer balance from repository
+        FestivalGoerBalance balance = festivalGoerRepository.getBalance(command.getFestivalGoerId());
+
+        // 2. Convert OrderItemCommand list to OrderItem list
+        List<OrderItem> items = command.getItems().stream()
+                .map(this::convertCommandToOrderItem)
+                .toList();
+
+        // 3. Delegate to internal implementation
+        return placeOrder(command.getFestivalGoerId(), items, balance);
+    }
+
+    /**
+     * Converts an OrderItemCommand to an OrderItem domain model.
+     * 
+     * @param command the command containing item type, subtype, and quantity
+     * @return the corresponding OrderItem
+     */
+    private OrderItem convertCommandToOrderItem(OrderItemCommand command) {
+        String itemType = command.getItemType();
+        String itemSubtype = command.getItemSubtype();
+        int quantity = command.getQuantity();
+
+        return switch (itemType) {
+            case "DRINK" -> OrderItem.createDrinkItem(
+                    DrinkTypeEnum.valueOf(itemSubtype),
+                    quantity
+            );
+            case "FOOD" -> OrderItem.createFoodItem(
+                    FoodTypeEnum.valueOf(itemSubtype),
+                    quantity
+            );
+            default -> throw new IllegalArgumentException("Unknown item type: " + itemType);
+        };
     }
 
     /**

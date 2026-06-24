@@ -5,10 +5,20 @@ import com.exalt.it.belair.application.dto.PlaceOrderResponse;
 import com.exalt.it.belair.domain.order.model.Order;
 import java.util.List;
 
+/**
+ * Mapper for converting Domain Order models to REST PlaceOrderResponse DTOs.
+ * Handles the conversion from rich domain entities to flat response structures
+ * suitable for HTTP responses.
+ */
 public class PlaceOrderResponseMapper {
+    
+    /**
+     * Converts a Domain Order to a REST response DTO.
+     *
+     * @param order the domain Order to convert
+     * @return the response DTO containing order details formatted for REST clients
+     */
     public static PlaceOrderResponse fromDomainResponse(Order order) {
-        // For now, returning a dummy response structure
-        // Will be implemented when domain Order has the required fields
         List<OrderItemResponse> items = order.getItems().stream()
                 .map(item -> new OrderItemResponse(
                         item.getItemType(),
@@ -16,10 +26,11 @@ public class PlaceOrderResponseMapper {
                         item.getQuantity()
                 ))
                 .toList();
+        
         return new PlaceOrderResponse(
-                "order-001",  // TODO: get from order when implemented
-                "fgv-001",    // TODO: get from order when implemented
-                "PENDING",    // TODO: get from order.getStatus()
+                order.getOrderId(),
+                order.getFestivalGoerId(),
+                order.getStatus().toString(),
                 items,
                 order.getDrinkTokenCost(),
                 order.getSnackTokenCost()

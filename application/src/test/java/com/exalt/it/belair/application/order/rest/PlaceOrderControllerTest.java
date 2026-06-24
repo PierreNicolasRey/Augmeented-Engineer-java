@@ -92,11 +92,14 @@ class PlaceOrderControllerTest {
                         snackTokenCost += quantity;
                         break;
                     case "MEAL":
-                        snackTokenCost += quantity * 2;
+                        snackTokenCost += quantity * 3;
                         break;
                 }
             }
         }
+        when(mockOrder.getOrderId()).thenReturn("order-001");
+        when(mockOrder.getFestivalGoerId()).thenReturn("fgv-001");
+        when(mockOrder.getStatus()).thenReturn(OrderStatusEnum.PENDING);
         when(mockOrder.getItems()).thenReturn(items);
         when(mockOrder.getDrinkTokenCost()).thenReturn(drinkTokenCost);
         when(mockOrder.getSnackTokenCost()).thenReturn(snackTokenCost);
@@ -114,6 +117,9 @@ class PlaceOrderControllerTest {
         when(mockItem.getItemType()).thenReturn("DRINK");
         when(mockItem.getItemSubtype()).thenReturn("NORMAL_ALCOHOLIC");
         when(mockItem.getQuantity()).thenReturn(1);
+        when(mockOrder.getOrderId()).thenReturn("order-001");
+        when(mockOrder.getFestivalGoerId()).thenReturn("fgv-001");
+        when(mockOrder.getStatus()).thenReturn(OrderStatusEnum.PENDING);
         when(mockOrder.getItems()).thenReturn(List.of(mockItem));
         when(mockOrder.getDrinkTokenCost()).thenReturn(1);
         when(mockOrder.getSnackTokenCost()).thenReturn(0);
@@ -180,9 +186,9 @@ class PlaceOrderControllerTest {
     void post_shouldReturn201WithSnackTokensCostSix_whenPlacingOrderWithMeals() throws Exception {
         var request = new PlaceOrderRequest(
                 "fgv-001",
-                List.of(new OrderItemRequest("FOOD", "MEAL", 3))
+                List.of(new OrderItemRequest("FOOD", "MEAL", 2))
         );
-        Order mockOrder = createMockOrder("FOOD,MEAL,3");
+        Order mockOrder = createMockOrder("FOOD,MEAL,2");
         when(placeOrderUseCase.placeOrder(any())).thenReturn(mockOrder);
 
         mvc.perform(post("/api/v1/orders")
@@ -216,7 +222,7 @@ class PlaceOrderControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.drinkTokensCost").value(2))
-                .andExpect(jsonPath("$.snackTokensCost").value(4));
+                .andExpect(jsonPath("$.snackTokensCost").value(5));
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
 import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.ports.out.IFestivalGoerRepository;
 import com.exalt.it.belair.domain.order.ports.out.IItemInventoryRepository;
 import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,12 +24,14 @@ class PlaceOrderUseCaseTest {
     private PlaceOrderUseCase sut;
     private TestOrderRepository orderRepository;
     private TestItemInventoryRepository itemInventoryRepository;
+    private TestFestivalGoerRepository festivalGoerRepository;
     
     @BeforeEach
     void setUp() {
         orderRepository = new TestOrderRepository();
         itemInventoryRepository = new TestItemInventoryRepository();
-        sut = new PlaceOrderUseCase(orderRepository, itemInventoryRepository);
+        festivalGoerRepository = new TestFestivalGoerRepository();
+        sut = new PlaceOrderUseCase(orderRepository, itemInventoryRepository, festivalGoerRepository);
     }
     
     // ============ HAPPY PATH: Single Item Scenarios ============
@@ -362,6 +365,18 @@ class PlaceOrderUseCaseTest {
             }
             // Default: item not found or abundant stock
             return 0;
+        }
+    }
+
+    /**
+     * Test double for IFestivalGoerRepository.
+     * Simulates festival goer balance retrieval for testing.
+     */
+    static class TestFestivalGoerRepository implements IFestivalGoerRepository {
+        @Override
+        public FestivalGoerBalance getBalance(String festivalGoerId) {
+            // Return a default balance for all festival goers in tests
+            return new FestivalGoerBalance(6, 9);
         }
     }
 }
