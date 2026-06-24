@@ -1,5 +1,6 @@
 package com.exalt.it.belair.domain.order.usecases;
 
+import com.exalt.it.belair.domain.core.annotation.DomainUseCase;
 import com.exalt.it.belair.domain.order.exceptions.EmptyOrderException;
 import com.exalt.it.belair.domain.order.exceptions.InsufficientItemInventoryException;
 import com.exalt.it.belair.domain.order.exceptions.ItemNotFoundInCatalogException;
@@ -32,6 +33,7 @@ import java.util.UUID;
  * Respects the Hexagonal Architecture by delegating persistence and inventory checks
  * to outbound ports (IOrderRepository, IItemInventoryRepository).
  */
+@DomainUseCase
 public class PlaceOrderUseCase implements PlaceOrderUseCasePort {
     private final IOrderRepository orderRepository;
     private final IItemInventoryRepository itemInventoryRepository;
