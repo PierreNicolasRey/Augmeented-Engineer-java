@@ -18,17 +18,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * RED TDD Test for CancelOrderUseCase.
+ * Tests for CancelOrderUseCase covering multiple scenarios and token types.
  * 
- * Scenario: Cancel pending order and unreserve tokens
- *   Given a festival goer "fgv-001" with 6 drink tokens total, 3 reserved, 3 available
- *   And an order "ord-001" with status "PENDING" costing 1 drink token
- *   And reserved tokens for this order: 1 drink, 0 snack
- *   When the cancel order use case is executed with orderId "ord-001"
- *   Then the order status is changed to "CANCELLED"
- *   And the unreserveTokens method is called with 1 drink, 0 snack
- *   And the token balance now shows: 6 total, 2 reserved (3 - 1), 4 available (6 - 2)
- *   And "updatedAt" timestamp is set
+ * Scenarios:
+ *   1. Cancel pending order with drink tokens reserved
+ *   2. Cancel pending order with snack tokens reserved
  */
 class CancelOrderUseCaseTest {
     private CancelOrderUseCase sut;  // System Under Test
@@ -72,6 +66,38 @@ class CancelOrderUseCaseTest {
         assertThat(updatedBalance.getDrinkTokens()).isEqualTo(6);  // Total unchanged
         assertThat(updatedBalance.getReservedDrinkTokens()).isEqualTo(2);  // 3 - 1 = 2
         assertThat(updatedBalance.getAvailableDrinkTokens()).isEqualTo(4);  // 6 - 2 = 4
+
+        // And "updatedAt" timestamp is set
+        assertThat(cancelledOrder.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void cancelOrder_shouldChangeStatusToCANCELLED_andUnreserveSnackTokens_whenOrderIsPendingWithSnackTokens() {
+        // GIVEN a festival goer "fgv-002" with 3 snack tokens reserved
+        String festivalGoerId = "fgv-002";
+        FestivalGoerBalance balance = new FestivalGoerBalance(0, 9);  // 0 drink, 9 snack (total)
+        balance.reserveSnackTokens(3);  // Reserve 3 snack tokens (6 available)
+        festivalGoerRepository.add(festivalGoerId, balance);
+        
+        // And an order "ord-002" with status "PENDING" costing 2 snack tokens
+        String orderId = "ord-002";
+        Order order = new Order(orderId, festivalGoerId, List.of(), OrderStatusEnum.PENDING);
+        order.setReservedTokens(0, 2);  // 0 drink, 2 snack reserved for this order
+        orderRepository.add(order);
+        
+        // WHEN the order is cancelled
+        sut.execute(orderId);
+
+        // THEN the order status is changed to "CANCELLED"
+        Order cancelledOrder = orderRepository.find(orderId).orElseThrow();
+        assertThat(cancelledOrder.getStatus()).isEqualTo(OrderStatusEnum.CANCELLED);
+
+        // And the token balance now shows 1 snack reserved (3 - 2)
+        FestivalGoerBalance updatedBalance = festivalGoerRepository.findBalance(festivalGoerId);
+        assertThat(updatedBalance.getReservedSnackTokens()).isEqualTo(1);  // 3 - 2 = 1
+
+        // And available snack tokens increased to 8 (9 - 1)
+        assertThat(updatedBalance.getAvailableSnackTokens()).isEqualTo(8);  // 9 - 1 = 8
 
         // And "updatedAt" timestamp is set
         assertThat(cancelledOrder.getUpdatedAt()).isNotNull();
