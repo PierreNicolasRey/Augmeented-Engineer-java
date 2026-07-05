@@ -96,4 +96,16 @@ public class FestivalGoerBalance {
         }
         reservedSnackTokens += amount;
     }
+
+    /**
+     * Unreserves the specified amount of drink and snack tokens.
+     * Used during order cancellation to release tokens back to the festival goer's available balance.
+     * 
+     * @param drinkTokens the number of drink tokens to unreserve
+     * @param snackTokens the number of snack tokens to unreserve
+     */
+    public void unreserveTokens(int drinkTokens, int snackTokens) {
+        reservedDrinkTokens -= drinkTokens;
+        reservedSnackTokens -= snackTokens;
+    }
 }

@@ -386,5 +386,11 @@ class PlaceOrderUseCaseTest {
             // Return a default balance for all festival goers in tests
             return new FestivalGoerBalance(6, 9);
         }
+
+        @Override
+        public FestivalGoerBalance saveBalance(FestivalGoerBalance balance) {
+            // No-op for test; just return the balance
+            return balance;
+        }
     }
 }

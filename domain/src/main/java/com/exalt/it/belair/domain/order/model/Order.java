@@ -1,5 +1,6 @@
 package com.exalt.it.belair.domain.order.model;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -10,7 +11,10 @@ public class Order {
     private final String orderId;
     private final String festivalGoerId;
     private final List<OrderItem> items;
-    private final OrderStatusEnum status;
+    private OrderStatusEnum status;
+    private int reservedDrinkTokens = 0;
+    private int reservedSnackTokens = 0;
+    private Instant updatedAt;
 
     /**
      * Constructs an Order with the specified parameters.
@@ -52,6 +56,16 @@ public class Order {
     }
 
     /**
+     * Sets the status of this order.
+     * Used during order state transitions (e.g., to CANCELLED).
+     * 
+     * @param status the new status
+     */
+    public void setStatus(OrderStatusEnum status) {
+        this.status = status;
+    }
+
+    /**
      * Gets the items in this order.
      * @return the list of items
      */
@@ -84,5 +98,50 @@ public class Order {
         }
         return cost;
     }
-}
 
+    /**
+     * Gets the number of reserved drink tokens for this order.
+     * @return the reserved drink tokens
+     */
+    public int getReservedDrinkTokens() {
+        return reservedDrinkTokens;
+    }
+
+    /**
+     * Gets the number of reserved snack tokens for this order.
+     * @return the reserved snack tokens
+     */
+    public int getReservedSnackTokens() {
+        return reservedSnackTokens;
+    }
+
+    /**
+     * Sets the reserved tokens for this order.
+     * Used for tracking which tokens are associated with this order during cancellation.
+     * 
+     * @param drinkTokens the number of reserved drink tokens
+     * @param snackTokens the number of reserved snack tokens
+     */
+    public void setReservedTokens(int drinkTokens, int snackTokens) {
+        this.reservedDrinkTokens = drinkTokens;
+        this.reservedSnackTokens = snackTokens;
+    }
+
+    /**
+     * Gets the timestamp when this order was last updated.
+     * @return the last update timestamp
+     */
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * Sets the timestamp when this order was last updated.
+     * Used to track when cancellation occurred.
+     * 
+     * @param timestamp the update timestamp
+     */
+    public void setUpdatedAt(Instant timestamp) {
+        this.updatedAt = timestamp;
+    }
+}
