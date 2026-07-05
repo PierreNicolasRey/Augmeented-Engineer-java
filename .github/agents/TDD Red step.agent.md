@@ -21,8 +21,9 @@ The user will provide you with :
 
 ## Instructions
 
-**CRITICAL** **ABSOLUTE RULE: Do the bare minimum to make the test code compile Anticipation is poisoning.**
+**CRITICAL** **ABSOLUTE RULE: Do the bare minimum to make the test code compile. Anticipation is poisoning.**
 **CRITICAL** **ABSOLUTE RULE: Do NOT implement any production code AT ALL. Use minimal inner classes.**
+**CRITICAL** **ABSOLUTE RULE: RED phase ONLY modify the test file. NEVER modify production code or create production files. ALL implementation stays in inner test classes until REFACTOR phase.**
 
 ---
 
@@ -60,11 +61,31 @@ The numbered steps below detail HOW to execute each HARD STOP. Follow them in se
 
 ---
 
-## 🛑 HARD STOP #2 - INNER CLASSES AUDIT (AFTER writing test)
+## 🛑 HARD STOP #2 - NO ANTICIPATION (CRITICAL)
 
-**CRITICAL RULE: RED and GREEN ONLY modify test file. NEVER modify production code.**
+**Before writing ANY test code, verify you test ONLY current scenario, NOT future ones.**
 
-For EACH inner class you plan to CREATE for THIS SCENARIO:
+1. □ Does the test scenario match the issue requirement EXACTLY?
+   Example: Issue says "Cancel pending order" → Test should ONLY test PENDING orders
+   → RED STOP: If test also tests "Cannot cancel acknowledged" (future scenario), narrow scope
+
+2. □ Will the test throw exceptions for validations?
+   - YES: Exception validates THIS scenario's validation (happy path with one validation)
+   - NO: Exception is for a DIFFERENT scenario → Do NOT test it now
+   Example: "Cancel pending order" (happy path) → NO exceptions
+   Example: "Cannot cancel acknowledged" (different scenario) → Test the exception
+   → RED STOP: Do NOT mix happy path and error scenarios
+
+3. □ Does the test create inner classes NOT used in test?
+   Example: Creating `OrderCannotBeCancelledException` but test never calls `assertThatThrownBy()`
+   → RED STOP: Do NOT create inner classes for future scenarios
+
+**Decision: Test ONLY current scenario without anticipation?**
+→ If NO: Rewrite test to match EXACTLY one scenario
+
+---
+
+## 🛑 HARD STOP #3 - INNER CLASSES FOR CURRENT SCENARIO ONLY
 
 ### Case 1: Production class DOES NOT exist yet
 1. □ Does the test DIRECTLY reference this class?
@@ -107,7 +128,7 @@ For EACH inner class you plan to CREATE for THIS SCENARIO:
 
 ---
 
-## 🛑 HARD STOP #3 - SKELETON CREATION RULES (By Layer)
+## 🛑 HARD STOP #4 - SKELETON CREATION RULES (By Layer)
 
 For EACH inner class skeleton you need to create, apply rules by layer:
 
@@ -147,7 +168,7 @@ For EACH inner class skeleton you need to create, apply rules by layer:
 
 ---
 
-## 🛑 HARD STOP #4 - ENUM VALUES CHECK
+## 🛑 HARD STOP #5 - ENUM VALUES CHECK
 
 For EACH enum created:
 
@@ -169,7 +190,7 @@ For EACH enum created:
 
 ---
 
-## 🛑 HARD STOP #5 - FAKES & TEST HELPERS
+## 🛑 HARD STOP #6 - FAKES & TEST HELPERS
 
 For test-only helper classes (Fakes):
 
@@ -202,7 +223,7 @@ For test-only helper classes (Fakes):
 
 ---
 
-## 🛑 HARD STOP #6 - FILE CREATION AUDIT
+## 🛑 HARD STOP #7 - FILE CREATION AUDIT
 
 SCAN workspace BEFORE creating inner classes:
 
@@ -226,7 +247,7 @@ SCAN workspace BEFORE creating inner classes:
 
 ---
 
-## 🛑 HARD STOP #7 - PRE-EXECUTION CHECK
+## 🛑 HARD STOP #8 - PRE-EXECUTION CHECK
 
 After writing test + inner classes:
 
@@ -249,7 +270,7 @@ After writing test + inner classes:
 
 ---
 
-## 🛑 HARD STOP #8 - POST-EXECUTION VERIFICATION
+## 🛑 HARD STOP #9 - POST-EXECUTION VERIFICATION
 
 After running test:
 

@@ -51,7 +51,28 @@ Before ANY implementation:
 
 ---
 
-## 🛑 HARD STOP #2 - PRE-MODIFICATION WORKSPACE BASELINE
+## 🛑 HARD STOP #2 - NO ANTICIPATION (CRITICAL)
+
+**Verify the RED test matches current scenario only before implementing.**
+
+1. □ Does the test use ALL inner classes you plan to implement?
+   - Example: Test creates `new Order()` → Implement Order ✓
+   - Example: Test doesn't use `OrderCannotBeCancelledException` → Do NOT implement it ✗
+   → GREEN STOP: If class not used, do NOT implement
+
+2. □ Do all implemented methods match test calls?
+   - Example: Test calls `balance.unreserveTokens(1,0)` → Implement that method ✓
+   - Example: Method exists but test doesn't call it → DELETE it ✗
+   → GREEN STOP: Implement ONLY what test uses
+
+**Refer to:** RED step "HARD STOP #2 - NO ANTICIPATION" if scenario unclear
+
+**Decision: Implementation matches ONLY current scenario?**
+→ If NO: STOP and align with RED test first
+
+---
+
+## 🛑 HARD STOP #3 - PRE-MODIFICATION WORKSPACE BASELINE
 
 BEFORE you start implementing:
 
@@ -76,7 +97,7 @@ find domain/src/test/java -type f -name "*.java" | wc -l > /tmp/test_count_befor
 
 ---
 
-## 🛑 HARD STOP #3 - DURING IMPLEMENTATION
+## 🛑 HARD STOP #4 - ONLY MODIFY TEST FILE (CRITICAL)
 
 AFTER writing EACH inner class:
 
@@ -103,7 +124,7 @@ AFTER writing EACH inner class:
 
 ---
 
-## 🛑 HARD STOP #4 - PRE-RUN CHECK
+## 🛑 HARD STOP #5 - PRE-RUN CHECK
 
 Before running test:
 
@@ -127,7 +148,7 @@ Before running test:
 
 ---
 
-## 🛑 HARD STOP #5 - POST-RUN VERIFICATION
+## 🛑 HARD STOP #6 - POST-RUN VERIFICATION
 
 After running test:
 

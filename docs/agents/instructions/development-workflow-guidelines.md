@@ -26,7 +26,7 @@ Repeat until Domain logic is complete:
 1. **RED Phase 🔴:** Write Domain test(s) (business logic, entities, services, use cases). Reference [testing-guidelines.md](./testing/testing-guidelines.md). Commit: `test(<scope>): <short description> (RED)`.
 2. **GREEN Phase 🟢:** Implement minimal Domain code to pass test(s). Follow CQS patterns ([AGENTS.md](../../../AGENTS.md#design-principles--architectural-rules)). Follow the project java guidelines ([java-coding-guidelines.md](./coding/java-coding-guidelines.md)). Run `./gradlew test`. Commit: `feat(<scope>): <short description> (GREEN)` or `fix(<scope>): <short description> (GREEN)`.
 3. **ANALYZE Phase 🔎:** Review for Hexagonal alignment, CQS separation, no framework annotations in Domain.
-4. **REFACTOR Phase ⚪:** Optimize if issues found. Run tests. Commit: `refactor(<scope>): <short description>`.
+4. **REFACTOR Phase ⚪:** Extract inner classes to production files ONLY if used by current test. See **CRITICAL Anti-Anticipation Rules** below. Run tests. Commit: `refactor(<scope>): <short description>`.
 5. **CODE REVIEW Phase 🕵️:** Self-review correctness, Javadoc, test coverage, style ([code-review-guidelines.md](./coding/code-review-guidelines.md)). If issues found, fix and loop back to ANALYZE.
 6. **Repeat steps 1-5** if more Domain logic needed.
 
@@ -37,6 +37,37 @@ Once Domain is stable, repeat the same cycle for Infrastructure (persistence ada
 ### Application Layer TDD Cycles
 
 Once Infrastructure is stable, repeat the same cycle for Application (REST controllers, DTOs, mappers).
+
+### CRITICAL: Anti-Anticipation Rules for REFACTOR Phase
+
+**During REFACTOR, extract inner classes to production ONLY if they are directly used by the current test scenario.**
+
+#### ❌ DO NOT Extract:
+- Exception classes not thrown and caught in current test
+- Validation methods not called by current test
+- Getter/setter methods not used in current test assertions
+- Future-scenario logic not yet tested
+
+#### ✅ DO Extract:
+- Classes instantiated by test
+- Methods called by test assertions or test execution flow
+- Exceptions explicitly tested via `assertThatThrownBy()` or equivalent
+- Logic directly required for current scenario to pass
+
+#### Example: Cancel Order Scenario 1
+**Current Test:** "Cancel pending order (happy path)" - no exceptions expected
+
+| Code Element | Extract? | Reason |
+|---|---|---|
+| `CancelOrderUseCase.execute()` | ✅ YES | Test calls this method |
+| `FestivalGoerBalance.unreserveTokens()` | ✅ YES | Test verifies this is called |
+| `Order.setReservedTokens()` | ✅ YES | Test calls this in setup |
+| `OrderCannotBeCancelledException` | ❌ NO | Not thrown in current test; needed for Scenario 4 |
+| `OrderNotFoundException` | ❌ NO | Not thrown in current test; needed for Scenario 8 |
+| Status validation logic | ❌ NO | Not tested in current scenario; needed for Scenario 4 |
+| Order lookup validation | ❌ NO | Not tested in current scenario; needed for Scenario 8 |
+
+**Rule:** Create exceptions and validations in their respective scenarios' RED phases, not in the happy-path scenario.
 
 ### DOCUMENTATION Phase 📚 (After All Layers Complete)
 

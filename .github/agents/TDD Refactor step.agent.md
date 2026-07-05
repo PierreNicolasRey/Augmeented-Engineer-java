@@ -175,6 +175,27 @@ Example scenario:
 
 ---
 
+## 🛑 HARD STOP #1.3 - ANTI-ANTICIPATION VERIFICATION
+
+**Critical: Verify NO anticipation occurred in RED or GREEN phases.**
+
+Refer to:
+- **RED step "HARD STOP #2 - NO ANTICIPATION"**: Test should only test current scenario
+- **GREEN step "HARD STOP #2 - NO ANTICIPATION"**: Implementation should only match test usage
+
+If you find anticipatory code in inner classes (e.g., `OrderCannotBeCancelledException` not used in test):
+
+1. □ Is this code CALLED by current test?
+   → NO: Do NOT extract to production. Add as TODO comment for future scenario
+   → YES: Extract normally
+   
+2. □ Extract ONLY what test uses, skip the rest
+
+**Decision: Extraction matches ONLY current test?**
+→ If NO: Revert anticipatory code to TODO comments
+
+---
+
 ### Core Refactor Principles
 
 **CRITICAL CLEANUP REQUIREMENT:**
