@@ -8,7 +8,7 @@ model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Refactor step
     agent: TDD Refactor step
-    prompt: The test is passing. Extract inner classes to production files and apply design patterns following STRICLTY the project architecture. {output}
+    prompt: The test is passing. Extract inner classes to production files and apply design patterns following STRICLTY the project architecture.
     send: false
 ---
 
