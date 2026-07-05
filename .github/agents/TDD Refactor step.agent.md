@@ -3,7 +3,7 @@ agent: agent
 name: TDD Refactor step
 description: Extract inner classes from test file to production modules, clean code, and improve design without changing behavior. Keep tests GREEN throughout all micro-steps.
 argument-hint: Refactor the following test scenario by extracting inner classes to production files: {test_file} - maintain GREEN tests
-tools: ['execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'upstash/context7/*', 'todo']
+tools: ['read/readFile', 'read/problems', 'edit/createFile', 'edit/createDirectory', 'edit/editFiles', 'execute/runInTerminal', 'execute/getTerminalOutput', 'file_search', 'grep_search', 'vscode_listCodeUsages', 'upstash/context7/*', 'todo']
 model: Claude Haiku 4.5 (copilot)
 ---
 
@@ -62,6 +62,116 @@ During REFACTOR, we extract inner classes from the test file to production modul
    - NOT: Create all files then update imports
    - NOT: Update all imports then delete all inner classes
    - YES: DrinkType → TEST GREEN ✅ → DELETE → TEST GREEN ✅ → OrderStatus → TEST GREEN ✅ → DELETE → TEST GREEN ✅ → etc.
+
+---
+
+## 🛑 HARD STOP #0 - REFACTOR PLANNING (ONE-TIME BEFORE ANY EXTRACTION)
+
+**This stop happens ONCE before any extraction starts**
+
+1. ☐ Have you listed ALL inner classes from test?
+   Format:
+   ```
+   DrinkType (enum) → domain/src/main/java/.../model/
+   OrderStatus (enum) → domain/src/main/java/.../model/
+   OrderItem (record) → domain/src/main/java/.../model/
+   Order (class) → domain/src/main/java/.../model/
+   PlaceOrderUseCase (class) → domain/src/main/java/.../usecases/
+   ```
+   → REFACTOR STOP: If not complete, plan first!
+   
+2. ☐ Have you ordered classes by dependency (bottom-up)?
+   - Enums first (no deps)
+   - Records second (may depend on enums)
+   - Classes third (may depend on records/enums)
+   - Use Cases last
+   → REFACTOR STOP: Wrong order breaks extraction!
+   
+3. ☐ Have you identified extraction path for EACH?
+   - Follow architecture guidelines from AGENTS.md
+   - Model → `domain/.../model/`
+   - UseCase → `domain/.../usecases/`
+   - Controller → `application/.../rest/`
+   - DTO → `application/.../dto/`
+   → REFACTOR STOP: Plan EXACTLY where each goes!
+   
+4. ☐ Production class exists for any inner class?
+   - If YES: Merge strategy planned?
+   → Extend, don't duplicate
+   → Preserve existing functionality
+
+**Decision: Planning complete and confirmed?**
+→ If NO to any: STOP and plan first before any extraction
+
+---
+
+## 🛑 HARD STOP #1.1 - PRE-EXTRACTION DEPENDENCY CHECK
+
+Before extracting class X:
+
+1. ☐ Is class X already extracted (from planning)?
+   → Skip if YES: Move to next
+   
+2. ☐ Do ALL dependencies of X already exist in production?
+   Example: OrderItem depends on DrinkType
+   → DrinkType MUST be extracted FIRST
+   → REFACTOR STOP: Extract dependencies first!
+   
+3. ☐ Target file DOESN'T already exist?
+   ```bash
+   ls -la domain/src/main/java/.../<TargetFile>.java
+   ```
+   → If exists: Adapt strategy (don't create duplicate)
+   → REFACTOR STOP: Plan merge if exists
+   
+4. ☐ Does test CURRENTLY PASS (GREEN baseline)?
+   ```bash
+   ./gradlew domain:test --tests "ClassName"
+   ```
+   → REFACTOR STOP: Start from GREEN baseline!
+
+**Decision: Safe to extract this class?**
+→ If NO to any: Resolve first
+
+---
+
+## 🛑 HARD STOP #1.2 - CONTENT-BASED CLASS MATCHING
+
+Before declaring "this class doesn't exist in production":
+
+**CRITICAL: Match by CONTENT, not just NAME**
+
+Example scenario:
+- In RED: Created inner class `OrderStatus` (non-standard naming)
+- In REFACTOR: Searching for production class named `OrderStatus`
+- Not found → But `OrderStatusEnum` exists in production!
+
+1. ☐ Search for candidate classes by CONTENT, not just exact name match:
+   ```bash
+   grep -r "enum.*Status" domain/src/main/java
+   grep -r "class.*Status" domain/src/main/java
+   grep -r "record.*Status" domain/src/main/java
+   ```
+   → Look for naming variations (Enum suffix, capitalization, etc.)
+   
+2. ☐ For EACH candidate found, verify it's the same concept:
+   - Example: `OrderStatusEnum` - does it contain same enum values?
+   - Example: `OrderItemRecord` - does it have same fields?
+   → REFACTOR STOP: If content matches, this IS your target class!
+   
+3. ☐ Check for Naming Conventions:
+   - Enums: Always suffixed `Enum`
+   - Exceptions: Always suffixed `Exception`
+   - Check project's `java-coding-guidelines.md` for conventions
+   
+4. ☐ If candidate found with same content but different name:
+   - Use the production class name
+   - Check if it follows the naming conventions. If not, rename it.
+   - Plan merge strategy accordingly
+   → Do NOT create duplicate with non-standard name
+
+**Decision: Matched class correctly?**
+→ If NO: Continue searching or create new
 
 ---
 
@@ -156,45 +266,311 @@ The agent **automatically accesses**:
 4. Plan which production files to create
 5. **Do NOT start extraction yet—plan first and STOP here until confirmed**
 
+---
+
+## 🛑 HARD STOP #2 - PHASE 1 MODIFY (Create Production File)
+
+Creating production file for class X:
+
+1. ☐ EXACTLY ONE file created?
+   → REFACTOR STOP: If multiple, create one per iteration!
+   
+2. ☐ Target path follows architecture?
+   - Models → `domain/.../model/`
+   - UseCases → `domain/.../usecases/`
+   - Controllers → `application/.../rest/`
+   - DTOs → `application/.../dto/`
+   → REFACTOR STOP: Wrong path!
+   
+3. ☐ ONLY class X copied (not others)?
+   → REFACTOR STOP: Remove other classes from file!
+   
+4. ☐ Test-specific comments removed?
+   → REFACTOR STOP: Clean code before production!
+   
+5. ☐ File compiles independently?
+   ```bash
+   ./gradlew domain:compileJava
+   ```
+   → REFACTOR STOP: Fix compilation!
+
+**Decision: Production file ready?**
+→ If NO: Fix before proceeding
+
+---
+
+## 🛑 HARD STOP #3 - PHASE 2 TEST (Add Import + Run)
+
+Adding import and running test:
+
+1. ☐ Import ONLY for class X added?
+   → REFACTOR STOP: Don't add other imports!
+   
+2. ☐ Test compiles?
+   → REFACTOR STOP: If not, debug compilation!
+   
+3. ☐ Test RUNS?
+   → REFACTOR STOP: If hangs/crashes, revert!
+   
+4. ☐ Test PASSES (GREEN)?
+   ```bash
+   ./gradlew domain:test --tests "PlaceOrderUseCaseTest"
+   ```
+   → REFACTOR SUCCESS if passes ✓
+   → REFACTOR STOP if fails: Revert file + import, debug!
+   
+5. ☐ Inner class X STILL in test (not deleted)?
+   → REFACTOR STOP: Don't delete yet!
+
+**Decision: PHASE 2 complete?**
+→ If NO: Revert and debug
+
+---
+
+## 🛑 HARD STOP #4 - PHASE 3 VALIDATE
+
+Validating behavior preservation:
+
+1. ☐ SAME assertions pass?
+   → REFACTOR STOP: If assertion fails differently, REVERT!
+   
+2. ☐ SAME output/return values?
+   
+3. ☐ SAME exception handling?
+   
+4. ☐ Test assertions = IDENTICAL before/after?
+   → REFACTOR STOP: If ANY assertion changed, REVERT!
+
+**Decision: Behavior preserved?**
+→ If NO: REVERT and investigate
+
+---
+
+## 🛑 HARD STOP #5 - PHASE 4 CLEANUP (Delete Inner Class)
+
+Deleting inner class from test:
+
+1. ☐ Deleting EXACTLY ONE inner class (class X)?
+   → REFACTOR STOP: One per iteration!
+   
+2. ☐ Import for X is KEPT?
+   
+3. ☐ Other inner classes UNTOUCHED?
+   
+4. ☐ Pre-existing inner classes preserved?
+   → If class X was from PREVIOUS scenario: Don't delete, just remove THIS scenario's methods/fields
+   → REFACTOR STOP: Don't delete reusable test helpers
+
+**Decision: Cleanup ready?**
+→ If NO: Adjust strategy
+
+---
+
+## 🛑 HARD STOP #6 - PHASE 5 VERIFY (Re-run)
+
+Re-running test after deletion:
+
+1. ☐ Test compiles?
+   → REFACTOR STOP: Fix compilation!
+   
+2. ☐ Test RUNS?
+   
+3. ☐ Test PASSES (GREEN)?
+   ```bash
+   ./gradlew domain:test --tests "PlaceOrderUseCaseTest"
+   ```
+   → REFACTOR SUCCESS if passes ✓
+   → REFACTOR STOP if fails: RE-ADD inner class, debug!
+   
+4. ☐ Inner class X is GONE from test file (really)?
+   ```bash
+   grep -n "class X\|enum X\|record X" test-file.java
+   ```
+   
+5. ☐ Assertions = IDENTICAL?
+
+**Decision: PHASE 5 complete?**
+→ If NO: Iterate
+
+---
+
+## 🛑 HARD STOP #7 - PHASE 6 CHECKPOINT
+
+Before moving to next class:
+
+1. ☐ Current state = 100% GREEN?
+   ```bash
+   ./gradlew domain:test
+   ```
+   
+2. ☐ No uncommitted/problematic files?
+   
+3. ☐ Ready for NEXT class extraction?
+   → If NO to any: RESOLVE before continue!
+   
+**→ DO NOT PROCEED TO NEXT CLASS UNTIL GREEN**
+
+---
+
+## 🛑 HARD STOP #8 - POST-REFACTOR FULL VERIFICATION
+
+After ALL extractions complete:
+
+1. ☐ ZERO inner classes remain in test?
+   ```bash
+   grep -E "^\s*(class|enum|record|interface)\s+" test-file.java | grep -v "@Test\|//"
+   ```
+   → REFACTOR STOP: If found, extract!
+   
+2. ☐ ALL imports point to `src/main/java`?
+   ```bash
+   grep "^import" test-file.java | grep -v "java\|org\|com\."
+   ```
+   
+3. ☐ Test imports = updated for all extracted classes?
+   
+4. ☐ Code follows `java-coding-guidelines.md`?
+   
+5. ☐ Code passes `code-review-guidelines.md`?
+   
+6. ☐ NO test-only comments remain?
+   ```bash
+   grep -i "green\|red\|test-only\|inner class" production-file.java
+   ```
+   
+7. ☐ Full test suite PASSES?
+   ```bash
+   ./gradlew domain:test
+   ```
+   → REFACTOR SUCCESS if passes ✓
+
+---
+
+## 🛑 HARD STOP #9 - ADAPT EXISTING MODELS
+
+If production class already exists and you need to adapt:
+
+1. ☐ Are you EXTENDING existing class?
+   → YES: Proceed
+   → NO (creating parallel like `OrderItemV2`): REFACTOR STOP!
+   
+2. ☐ Do ALL existing tests STILL PASS?
+   ```bash
+   ./gradlew domain:test
+   ```
+   → REFACTOR STOP if broken: REVERT adaptation!
+   
+3. ☐ Adaptation is STRUCTURAL only (not logic)?
+   - Example OK: Add field `itemId`
+   - Example NO: Change algorithm logic
+   → REFACTOR STOP if logic changed: REVERT!
+   
+4. ☐ Is adaptation documented (comment explaining WHY)?
+
+**Decision: Adaptation safe?**
+→ If NO to any: REVERT and plan differently
+
+---
+
+## 🛑 HARD STOP #10 - TEST-ONLY COMMENT CLEANUP
+
+After all inner classes extracted, clean production code of test-specific artifacts:
+
+**CRITICAL: Remove ONLY useless comments. PRESERVE meaningful documentation.**
+
+1. ☐ Scan for and REMOVE phase-indicator comments (useless):
+   ```bash
+   grep -r "//.*INNER CLASS\|//.*GREEN PHASE\|//.*RED PHASE\|//.*extract from test" domain/src/main/java
+   ```
+   → Examples to DELETE: `// INNER CLASSES BELOW`, `// GREEN phase`, `// After extraction`
+   → REFACTOR STOP: If found, DELETE these
+   
+2. ☐ PRESERVE structural comments (useful):
+   - ✅ Keep: `// Given: setup state`, `// When: action`, `// Then: verification`
+   - ✅ Keep: `// Mock setup`, `// Setup test doubles`, `// Configure behavior`
+   - ✅ Keep: `// Setup: prepare`, `// Cleanup: teardown`
+   → These explain test structure and intent
+   
+3. ☐ PRESERVE business logic comments (useful):
+   - ✅ Keep: `// Reserve tokens before order`, `// Validate sufficient balance`
+   - ✅ Keep: Any comments explaining WHY logic exists
+   
+4. ☐ Verify Javadoc doesn't mention phases (remove if found):
+   ```bash
+   grep -r "@.*GREEN\|@.*RED\|extract from test" domain/src/main/java
+   ```
+
+**Decision: Only useless comments removed?**
+→ If NO to any: Recheck and preserve meaningful comments
+
+---
+
+## 🛑 HARD STOP #11 - PRODUCTION CODE DOCUMENTATION
+
+Ensure all production code is properly documented:
+
+1. ☐ Each extracted class has Javadoc?
+   - Domain Models: Document business intent
+   - Use Cases: Document command/action purpose
+   - DTOs: Document purpose and usage context
+   → REFACTOR STOP: Add missing Javadoc
+   
+2. ☐ Complex methods documented with purpose (WHY, not WHAT)?
+   ```java
+   // ✅ Good: Explains WHY
+   // Reserve tokens before creating order to prevent double-booking
+   
+   // ❌ Bad: Just explains WHAT
+   // Reserve tokens
+   ```
+   → REFACTOR STOP: Add purpose comments
+   
+3. ☐ All public methods have parameter/return documentation?
+
+**Decision: Production code properly documented?**
+→ If NO: Add documentation
+
+---
+
+## 🛑 HARD STOP #12 - UPDATE IMPLEMENTED-FEATURES-DOCUMENTATION
+
+Update global feature documentation following the official template:
+
+1. ☐ File exists: `docs/features/implemented-features-documentation.md`?
+   → REFACTOR STOP: If not found, verify location
+   
+2. ☐ Add entry for THIS scenario using the template from:
+   [feature-documentation-guidelines.md](../../docs/agents/instructions/documentation/feature-documentation-guidelines.md)
+   
+   This guidelines file defines the EXACT structure to follow:
+   - Feature name
+   - Summary (1-3 sentences)
+   - Status (Design/Implementing/Stable/Deprecated)
+   - Public API / Contracts (REST endpoints, DTOs, Ports, Events)
+   - Quick usage (examples)
+   - Design decisions (Decision/Trade-offs/Rationale)
+   - Tests & validation
+   - Related files (by module)
+   - Changelog (organized by date)
+   - Notes
+   
+3. ☐ Follow the template structure EXACTLY?
+   ```bash
+   grep -l "Feature name\|Summary\|Status\|Public API\|Quick usage" docs/features/implemented-features-documentation.md
+   ```
+   → REFACTOR STOP: If template not followed, verify formatting
+   
+4. ☐ Changelog entry includes:
+   - Date in format `YYYY-MM-DD`
+   - Summary of scenario
+   - Impact (new/modified classes)
+
+**Decision: Documentation updated per guidelines?**
+→ If NO: Review template and reformat
+
+---
+
 ### Step N (REPEAT for EACH inner class, one class per iteration):
-
-#### **PHASE 1: MODIFY (Create Production File)**
-- Create ONE production file with the extracted inner class
-- Copy **ONLY** that ONE inner class from test to production file
-- Clean test-specific comments from the class definition
-- Verify the class compiles independently
-- **Do NOT delete from test yet**
-- **Do NOT create other production files**
-
-#### **PHASE 2: TEST (Add Import & Verify GREEN)**
-1. Update test file: Add `import` for the production class
-2. Do NOT modify test method or assertions
-3. Do NOT remove inner class from test yet
-4. Run test: `./gradlew domain:test --tests "TestClassName"`
-5. **MUST see: ✅ BUILD SUCCESSFUL**
-6. If test fails: STOP, REVERT all changes, debug
-
-#### **PHASE 3: VALIDATE (Confirm Behavior Unchanged)**
-- All assertions must pass identically
-- No compilation errors
-- No runtime errors
-- Test output matches GREEN baseline
-
-#### **PHASE 4: CLEANUP (Delete Inner Class from Test)**
-- Delete ONLY the ONE inner class definition from test file
-- Keep the import added in PHASE 2
-- Do NOT touch other inner classes
-
-#### **PHASE 5: VERIFY (Run Test Again)**
-1. Run test again: `./gradlew domain:test --tests "TestClassName"`
-2. **MUST see: ✅ BUILD SUCCESSFUL (again)**
-3. If test fails after cleanup: REVERT cleanup, keep production file, debug
-4. Verify test still GREEN without inner class in test file
-
-#### **PHASE 6: CHECKPOINT (Before Continuing)**
-- Confirm current state is fully GREEN
-- Only then move to NEXT inner class
-- Repeat Phases 1-5 for the next class
 
 ## Detailed Extraction Sequence
 

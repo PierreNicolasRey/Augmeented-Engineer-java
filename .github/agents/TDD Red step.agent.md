@@ -3,7 +3,7 @@ agent: agent
 name: TDD Red step
 description: This prompt is used to implement one test scenario that fails in a TDD workflow for an AI agent
 argument-hint: Implement the following test scenario in a TDD workflow for an AI agent: {scenario_description}
-tools: ['execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'upstash/context7/*', 'todo']
+tools: ['read/readFile', 'read/problems', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'execute/runInTerminal', 'execute/getTerminalOutput', 'grep_search', 'file_search', 'vscode_listCodeUsages', 'todo']
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Green step
@@ -24,51 +24,250 @@ The user will provide you with :
 **CRITICAL** **ABSOLUTE RULE: Do the bare minimum to make the test code compile Anticipation is poisoning.**
 **CRITICAL** **ABSOLUTE RULE: Do NOT implement any production code AT ALL. Use minimal inner classes.**
 
-1. **Extract and understand the scenario:**
-   - If the scenario is a reference (e.g., issue #123), retrieve the exact scenario text.
-   - If provided directly, parse it as-is.
-   - **Your job is to make THIS scenario fail, not to predict future scenarios.**
+---
 
-2. **Locate or create the test file:**
-   - Check if a test file exists for this use case.
-   - If yes: append the new test method to the existing file.
-   - If no: create a new test file in `src/test/java` following module conventions (domain/application/infrastructure).
+## 🛑 HARD STOP #1 - SCENARIO VALIDATION
 
-3. **Write the test first:**
-   - Write ONLY the test code that directly reflects the scenario's Given-When-Then.
-   - **CRITICAL** **ALWAYS** follow [testing-guidelines.md](../../docs/agents/instructions/testing/testing-guidelines.md) for structure and naming.
-   - **CRITICAL** **ALWAYS** For your specific layer, consult: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md), [application-testing-guidelines.md](../../docs/agents/instructions/testing/application-testing-guidelines.md), or [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md).
-   - **The test will fail because production code is missing.**
+Before writing ANY test code, STOP and verify:
 
-4. **Create ONLY structural skeletons in `src/main/java` to fix compilation errors.**
-   - For each compilation error, create the **minimum required class/method/enum**.
-   - **CRITICAL: Never create an interface, port, or abstract class unless the test directly imports it.**
-   - **DO NOT CREATE:**
-     - Repository interfaces unless the test explicitly instantiates or imports them.
-     - EventPublisher ports unless the test calls `publish()` on one.
-     - Enums with more values than what the test references.
-     - Getters/setters that the test does not call.
-     - Builder patterns, mappers, or utility classes.
-   - **Skeleton syntax is ruthlessly minimal:**
-     - **Classes**: Constructor(s) only. Method bodies: `throw new UnsupportedOperationException("Not implemented yet");`
-     - **Methods**: Return `null` for objects, `0` for primitives, or throw exception (preferred).
-     - **Enums**: List **ONLY** the exact enum values used in the test. If the test references only `PENDING`, the enum has only `PENDING`. Do not add `ACKNOWLEDGED`, `READY`, or `CANCELLED`.
-     - **No conditionals, loops, assignments, or any logic whatsoever.**
+1. □ Do you have the Gherkin scenario description?
+   → RED STOP: If missing, ask user for scenario
+   
+2. □ Have you identified the target layer?
+   - Domain (business logic)?
+   - Application (HTTP endpoints)?
+   - Infrastructure (persistence)?
+   → RED STOP: If unclear, identify first
+   
+3. □ Have you read the correct module testing guidelines?
+   - `domain-testing-guidelines.md`?
+   - `application-testing-guidelines.md`?
+   - `infrastructure-testing-guidelines.md`?
+   → RED STOP: Read before writing test!
+   
+4. □ Is there an existing test file for this use case?
+   - YES: Append new test method to existing class
+   - NO: Create new test file in correct package
+   
+**Decision: Can you proceed to write test?**
+→ If NO to any above: STOP and resolve first
 
-5. **Fakes are test-only helper classes:**
-   - Create Fakes in `src/test/java` ONLY if needed for the test to run.
-   - A Fake is a **standalone class**, never implementing production interfaces that haven't been created yet.
-   - Example: if you need to simulate storing data, write a simple `FakeStorage` class with a `List<>`. Do not create a `StoragePort` interface in `src/main/java`.
-   - Store Fakes in `src/test/java` in a dedicated `fake/` or `helper/` package.
+---
 
-6. **Run the test to confirm failure:**
-   - Execute the test. It **MUST fail** (either `UnsupportedOperationException` or assertion failure).
-   - A test that passes or doesn't execute is an absolute failure of RED.
+## 📋 Implementation Process
 
-7. Before ending the turn, summarize the changes made in the required format. You should include : 
-    - A brief description of the test scenario implemented.
-    - The file path where the test was created or modified.
-    - the name of the test method you implemented
+The numbered steps below detail HOW to execute each HARD STOP. Follow them in sequence:
+
+---
+
+## 🛑 HARD STOP #2 - INNER CLASSES AUDIT (AFTER writing test)
+
+**CRITICAL RULE: RED and GREEN ONLY modify test file. NEVER modify production code.**
+
+For EACH inner class you plan to CREATE for THIS SCENARIO:
+
+### Case 1: Production class DOES NOT exist yet
+1. □ Does the test DIRECTLY reference this class?
+   Example: `new OrderStatus()` or `OrderItem.create()` in test?
+   → RED STOP: If NO, do NOT create this inner class
+   
+2. □ Does THIS test CALL every public method on this class?
+   → RED STOP: If method exists but test doesn't call it, delete it
+   
+3. □ Does the class have ONLY methods THIS test uses?
+   → RED STOP: No anticipatory methods for future scenarios
+
+### Case 2: Production class ALREADY EXISTS (from previous scenarios)
+1. □ Keep the production import for existing tests
+   Example: Test file already has `import com.it.exalt.belair.domain.order.model.OrderStatus;`
+   → Do NOT remove this import
+   
+2. □ For THIS scenario, create a MINIMAL inner class with same name
+   Example: If prod `OrderStatus` has {PENDING, ACKNOWLEDGED, READY, CANCELLED}
+            but THIS scenario only uses PENDING
+            → Create inner class `OrderStatus` with ONLY {PENDING}
+   → Reason: Inner class shadows prod import, only for THIS test
+   
+3. □ Ensure test can distinguish:
+   - Existing tests: use production import (still passing)
+   - THIS test: use inner class (matches scenario)
+   
+4. □ **CRITICAL: Do NOT adapt, modify, or touch production code**
+   → Your inner class is temporary
+   → REFACTOR phase will merge inner class with production class
+
+### Validation Checklist
+- ✅ Inner class has ONLY values/methods used in THIS scenario
+- ✅ Production import is preserved (if class existed)
+- ✅ Existing tests remain unaffected
+- ✅ No production code modified
+
+**Decision: Inner classes ready for compilation check?**
+→ If NO to any: REWRITE inner classes
+
+---
+
+## 🛑 HARD STOP #3 - SKELETON CREATION RULES (By Layer)
+
+For EACH inner class skeleton you need to create, apply rules by layer:
+
+### DOMAIN Layer (Use Cases, Domain Services)
+1. □ Create interfaces ONLY if test uses a Fake that implements them
+   - Example: Test needs `OrderRepository` → create interface → Fake implements it ✓
+   - Example: Future "might need" `TokenRepository` but test doesn't use it → DON'T create ✗
+   - **NOTE:** These interfaces live in test now, become Ports in REFACTOR phase
+   → RED STOP: Only create interfaces the test actually references via Fakes
+   
+2. □ All interfaces created are TEMPORARY (in src/test/java only)
+   - REFACTOR will move them to production as Ports
+   - Do NOT worry about interface design—only what test needs
+   
+3. □ Classes: Constructor(s) only, method bodies throw `UnsupportedOperationException`
+   → RED STOP: No real implementation logic in RED
+   
+4. □ Methods: Return `null` or `0` or throw exception, never compute values
+   → RED STOP: Skeletons only, not implementation
+
+### APPLICATION Layer (Controllers, REST endpoints)
+1. □ Never create domain interfaces, use cases, or ports
+   → RED STOP: Controllers ONLY receive/parse HTTP, delegate via @MockBean
+   
+2. □ Never create custom Port interfaces for Application layer
+   → RED STOP: Application depends on Domain ports (already defined)
+
+### INFRASTRUCTURE Layer (Persistence, Adapters)
+1. □ Create Adapter classes only if test exercises persistence
+   → RED STOP: Only create what test actually calls
+   
+2. □ Never create Domain Ports in this layer (already exist in Domain)
+   → Implement existing Domain ports in adapters
+
+**Decision: Skeleton syntax correct and layer-appropriate?**
+→ If NO: Rewrite skeletons
+
+---
+
+## 🛑 HARD STOP #4 - ENUM VALUES CHECK
+
+For EACH enum created:
+
+1. □ List all enum values EXPLICITLY referenced in test
+   ```bash
+   grep -E "EnumName\.[A-Z_]+" test-file.java
+   ```
+   → RED STOP: If grep finds unexpected values, review
+   
+2. □ Does your enum have EXACTLY those values (no more, no less)?
+   Example test: `status == OrderStatus.PENDING`
+   → Enum MUST have ONLY: `PENDING`
+   → Enum MUST NOT have: `ACKNOWLEDGED, READY, CANCELLED`
+   
+3. □ Enum values listed in same order as test usage?
+   
+**Decision: Enum values correct?**
+→ If NO: REWRITE enum
+
+---
+
+## 🛑 HARD STOP #5 - FAKES & TEST HELPERS
+
+For test-only helper classes (Fakes):
+
+### DOMAIN Layer Fakes (Required Pattern)
+1. □ Create Fakes ONLY in `src/test/java` (never in production)
+   → RED STOP: If creating in src/main/java, move to test
+   
+2. □ **Fakes MUST implement an interface (Port or temporary interface)**
+   - Example: `public class FakeOrderRepository implements OrderRepository { ... }`
+   - Example: `public class FakeEventPublisher implements EventPublisherPort { ... }`
+   - **CRITICAL:** If the Port doesn't exist yet → create the interface IN TEST
+   - This interface will become a Port in REFACTOR phase
+   - Reference: [domain-testing-guidelines.md](../../docs/agents/instructions/testing/domain-testing-guidelines.md) for Fake patterns
+   → RED STOP: Fakes MUST be mockable (implement an interface, even if temporary)
+   
+3. □ Fakes stored in dedicated `fakes/` package within test tree
+   
+4. □ Fakes implement `TestState<T, ID>` to expose test data (findAll, find, add)
+   
+5. □ Fakes have ONLY methods/fields test actually uses
+
+### APPLICATION & INFRASTRUCTURE Layers
+1. □ Never use Fakes (use @MockBean + Mockito instead)
+   - Application: Mock Use Cases via @MockBean
+   - Infrastructure: Mock Database/Event Bus via TestContainers or @MockBean
+   → RED STOP: Don't create Fake implementations for these layers
+
+**Decision: Fakes correctly follow layer patterns?**
+→ If NO: Verify architecture and adjust
+
+---
+
+## 🛑 HARD STOP #6 - FILE CREATION AUDIT
+
+SCAN workspace BEFORE creating inner classes:
+
+1. □ Verify NO new files exist in src/main/java:
+   ```bash
+   find domain/src/main/java -type f -newermt "5 minutes ago"
+   ```
+   → RED STOP: If ANY files found, RED VIOLATION! Revert immediately
+   
+2. □ Count current files in src/main/java:
+   ```bash
+   find domain/src/main/java -type f | wc -l
+   ```
+   → NOTE: Must be SAME after inner classes created
+   
+3. □ Are you about to create files in src/main/java?
+   → RED STOP: Put EVERYTHING in test inner classes!
+
+**Decision: Safe to create inner classes?**
+→ If NO: Stop and fix
+
+---
+
+## 🛑 HARD STOP #7 - PRE-EXECUTION CHECK
+
+After writing test + inner classes:
+
+1. □ Code compiles without errors?
+   ```bash
+   ./gradlew domain:compileTestJava
+   ```
+   → RED STOP: If compilation fails, debug and recheck inner classes
+   
+2. □ STILL no files created in src/main/java?
+   ```bash
+   find domain/src/main/java -type f -newermt "5 minutes ago"
+   ```
+   → RED STOP: If violation found, REVERT and move code to test
+   
+3. □ Test file only? No other files modified?
+
+**Decision: Ready to execute test?**
+→ If NO: Fix and recheck
+
+---
+
+## 🛑 HARD STOP #8 - POST-EXECUTION VERIFICATION
+
+After running test:
+
+1. □ Test EXECUTES (doesn't hang or crash)?
+   → RED STOP: If test doesn't run, debug
+   
+2. □ Test FAILS (throws exception or assertion error)?
+   → RED SUCCESS if fails ✓
+   → RED FAILURE if PASSES: You implemented too much logic!
+   → RED STOP: Simplify inner classes and rerun
+   
+3. □ Expected error is UnsupportedOperationException or assertion error?
+   → RED SUCCESS ✓
+
+**Decision: RED phase complete?**
+→ If NO: Iterate until test fails correctly
+
+---
 
 ## Requirements
 

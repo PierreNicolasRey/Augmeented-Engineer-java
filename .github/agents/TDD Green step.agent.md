@@ -3,7 +3,7 @@ agent: agent
 name: TDD Green step
 description: This prompt is used to implement minimal production code to make a failing RED test pass in a TDD workflow for an AI agent
 argument-hint: Implement the following test scenario to make it pass with minimal logic: {test_file} - {test_method}
-tools: ['execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'upstash/context7/*', 'todo']
+tools: ['read/readFile', 'read/problems', 'edit/editFiles', 'execute/runInTerminal', 'execute/getTerminalOutput', 'file_search', 'get_errors', 'todo']
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Refactor step
@@ -29,6 +29,137 @@ The previous agent in the workflow will provide you with:
 This is non-negotiable. Write all production code as **inner classes or nested classes directly inside the test class**. The test class file is the ONLY place where code goes during GREEN. The REFACTOR phase will extract these inner classes to production files later.
 
 **ABSOLUTE RULE: Implement ONLY what is necessary to make the test pass. No more. No anticipation. Period.**
+
+---
+
+## 🛑 HARD STOP #1 - GREEN PHASE STARTUP
+
+Before ANY implementation:
+
+1. ☐ Did RED phase create a FAILING test?
+   → GREEN STOP: If test passes, you are not ready for GREEN yet
+   
+2. ☐ Do you have EXACT test file path + method name?
+   Example: `domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java`
+   → GREEN STOP: Get from RED output
+   
+3. ☐ Is there only ONE test class to modify?
+   → GREEN STOP: If multiple classes affected, request splitting first
+
+**Decision: Can you proceed with GREEN?**
+→ If NO to any above: STOP and resolve first
+
+---
+
+## 🛑 HARD STOP #2 - PRE-MODIFICATION WORKSPACE BASELINE
+
+BEFORE you start implementing:
+
+Capture baseline of workspace:
+```bash
+# Count files before GREEN starts
+find domain/src/main/java -type f | wc -l > /tmp/main_count_before.txt
+find domain/src/test/java -type f -name "*.java" | wc -l > /tmp/test_count_before.txt
+```
+
+1. ☐ How many Java files currently in `domain/src/main/java`?
+   → NOTE: Must be SAME at end of GREEN
+   
+2. ☐ How many Java files currently in `domain/src/test/java`?
+   → NOTE: Test file will be larger, but no NEW files created
+   
+3. ☐ Test file backed up or committed?
+   → For emergency revert capability
+
+**Decision: Baseline captured?**
+→ If NO: Capture first
+
+---
+
+## 🛑 HARD STOP #3 - DURING IMPLEMENTATION
+
+AFTER writing EACH inner class:
+
+1. ☐ Have you modified ONLY the test file?
+   ```bash
+   git status | grep -E "domain/src/main/java"
+   ```
+   → GREEN STOP: If anything in `src/main/java` changed, REVERT immediately!
+   
+2. ☐ Have you created any NEW files?
+   ```bash
+   find domain/src -newer <timestamp> -type f
+   ```
+   → GREEN STOP: If YES, DELETE and move code to inner classes
+   
+3. ☐ Inner class has ONLY methods THIS test calls?
+   → GREEN STOP: Remove unused methods
+   
+4. ☐ No fields that test doesn't access?
+   → GREEN STOP: Keep implementation minimal
+
+**Decision: Inner class ready?**
+→ If NO: Refine before continuing
+
+---
+
+## 🛑 HARD STOP #4 - PRE-RUN CHECK
+
+Before running test:
+
+1. ☐ Scan: ZERO new files in `src/main/java`?
+   ```bash
+   find domain/src/main/java -type f -newermt "10 minutes ago"
+   ```
+   → GREEN STOP: Delete new files immediately if found!
+   
+2. ☐ Test file ONLY? ONLY the test file modified?
+   → GREEN STOP: Revert any other modifications
+   
+3. ☐ Assertions in test UNCHANGED?
+   → GREEN STOP: Test is specification, immutable!
+   → If you changed assertions, REVERT to RED's test
+   
+4. ☐ Ready to execute?
+
+**Decision: Safe to run test?**
+→ If NO: Fix violations first
+
+---
+
+## 🛑 HARD STOP #5 - POST-RUN VERIFICATION
+
+After running test:
+
+1. ☐ Test PASSES?
+   ```bash
+   ./gradlew domain:test --tests "PlaceOrderUseCaseTest"
+   ```
+   → GREEN SUCCESS if passes ✓
+   → GREEN FAILURE if fails: Debug and reimplement inner classes
+   
+2. ☐ Scan: ZERO new files in `src/main/java`?
+   ```bash
+   find domain/src/main/java -type f -newermt "10 minutes ago"
+   ```
+   → GREEN STOP: If found, DELETE!
+   
+3. ☐ Scan: ONLY test file modified in `src/test/java`?
+   ```bash
+   git status domain/src/test/java
+   ```
+   → GREEN STOP: If other test files modified, REVERT!
+   
+4. ☐ File counts match baseline?
+   ```bash
+   find domain/src/main/java -type f | wc -l
+   find domain/src/test/java -type f -name "*.java" | wc -l
+   ```
+
+**Decision: GREEN phase complete?**
+→ If NO to any: Iterate
+
+---
 
 ### Philosophy: "TDD as if you meant it"
 During GREEN, we implement code **in a way that makes the test pass with minimal logic**. We embrace:
