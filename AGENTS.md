@@ -185,3 +185,8 @@ When documenting code or practices, follow the [Documentation Guidelines](./docs
 ## AGENTS.md Maintenance guidelines
 
 When working on improving the AGENTS.md instructions or other agent-related documentation, follow the [AGENTS.md Maintenance Guidelines](./docs/agents/instructions/coding/agents-md-maintenance-guidelines.md) strictly.
+
+## Terminal usage guidelines
+
+We are working on a Windows environment.
+When you need to execute a command in the terminal, NEVER try to execute unix commands, ALWAYS use powershell commands.

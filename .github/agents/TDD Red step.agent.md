@@ -3,7 +3,7 @@ agent: agent
 name: TDD Red step
 description: This prompt is used to implement one test scenario that fails in a TDD workflow for an AI agent
 argument-hint: Implement the following test scenario in a TDD workflow for an AI agent: {scenario_description}
-tools: ['read/readFile', 'read/problems', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'execute/runInTerminal', 'execute/getTerminalOutput', 'grep_search', 'file_search', 'vscode_listCodeUsages', 'todo']
+tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/createDirectory, edit/createFile, edit/editFiles, search/fileSearch, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo]
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Green step

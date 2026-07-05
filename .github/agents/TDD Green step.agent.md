@@ -3,7 +3,7 @@ agent: agent
 name: TDD Green step
 description: This prompt is used to implement minimal production code to make a failing RED test pass in a TDD workflow for an AI agent
 argument-hint: Implement the following test scenario to make it pass with minimal logic: {test_file} - {test_method}
-tools: ['read/readFile', 'read/problems', 'edit/editFiles', 'execute/runInTerminal', 'execute/getTerminalOutput', 'file_search', 'get_errors', 'todo']
+tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/editFiles, search/fileSearch, search/listDirectory, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo]
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Refactor step
