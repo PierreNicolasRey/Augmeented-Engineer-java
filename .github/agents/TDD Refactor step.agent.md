@@ -2,7 +2,7 @@
 agent: agent
 name: TDD Refactor step
 description: Extract inner classes from test file to production modules, clean code, and improve design without changing behavior. Keep tests GREEN throughout all micro-steps.
-argument-hint: Refactor the following test scenario by extracting inner classes to production files: {test_file} - maintain GREEN tests
+argument-hint: Refactor the following test scenario by extracting inner classes to production files: {input} - maintain GREEN tests
 tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/createDirectory, edit/createFile, edit/editFiles, search/fileSearch, search/listDirectory, search/textSearch, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo]
 model: Claude Haiku 4.5 (copilot)
 ---

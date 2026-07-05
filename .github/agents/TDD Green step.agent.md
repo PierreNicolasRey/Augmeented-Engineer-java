@@ -1,14 +1,14 @@
 ---
 agent: agent
 name: TDD Green step
-description: This prompt is used to implement minimal production code to make a failing RED test pass in a TDD workflow for an AI agent
-argument-hint: Implement the following test scenario to make it pass with minimal logic: {test_file} - {test_method}
+description: This agent is used to implement minimal production code to make a failing RED test pass in a TDD workflow for an AI agent
+argument-hint: Implement the following test scenario to make it pass with minimal logic: {input}
 tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/editFiles, search/fileSearch, search/listDirectory, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo]
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Refactor step
     agent: TDD Refactor step
-    prompt: The test is passing. Extract inner classes to production files and apply design patterns following STRICLTY the project architecture.
+    prompt: The test is passing. Extract inner classes to production files and apply design patterns following STRICLTY the project architecture. {output}
     send: false
 ---
 
@@ -247,6 +247,15 @@ Provide:
   - If the test doesn't call `eventPublisher.publish()`, do NOT create an event publisher.
   - Stay literal to what the test does.
   - *Exception*: If RED created a port skeleton and the test directly uses it (e.g., calls a method on an injected fake), implement that method minimally.
+
+- **🚨 ABSOLUTE: NEVER reuse existing production classes in GREEN phase, even if they exist and are fully implemented.**
+  - VIOLATION: Implementing inner class methods by delegating to production class: `Order order = new com.exalt.it.belair.domain.order.model.Order(...)`
+  - CORRECT: Implement inner class with minimal logic that makes the test pass
+  - REASON: The test uses inner classes created in RED phase. You must implement those inner classes, not bypass them with production code.
+  - REFACTOR phase will recognize production classes exist and merge implementations, extracting inner classes to production files.
+  - **This applies to ALL classes**: Domain Models, Value Objects, Entities, Use Cases, Services, Repositories, etc.
+  - If production class exists with same name → implement the inner class version that the test uses
+  - The inner class implementation is temporary; REFACTOR extracts it to production later
 
 - **ABSOLUTE: No additional methods, getters, or fields beyond what the test uses.**
   - Example: Do NOT add `reserve()`, `deduct()`, or helper methods the test doesn't call.

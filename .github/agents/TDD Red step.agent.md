@@ -1,14 +1,14 @@
 ---
 agent: agent
 name: TDD Red step
-description: This prompt is used to implement one test scenario that fails in a TDD workflow for an AI agent
+description: This agent is used to implement one test scenario that fails in a TDD workflow for an AI agent
 argument-hint: Implement the following test scenario in a TDD workflow for an AI agent: {scenario_description}
 tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/createDirectory, edit/createFile, edit/editFiles, search/fileSearch, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo]
 model: Claude Haiku 4.5 (copilot)
 handoffs:
   - label: Start Green step
     agent: TDD Green step
-    prompt: The test is written. Implement minimal production code to make it pass Green.
+    prompt: The test is written. Implement minimal production code to make it pass Green. {output}
     send: false
 ---
 
@@ -99,32 +99,49 @@ The numbered steps below detail HOW to execute each HARD STOP. Follow them in se
    → RED STOP: No anticipatory methods for future scenarios
 
 ### Case 2: Production class ALREADY EXISTS (from previous scenarios)
-1. □ Keep the production import for existing tests
-   Example: Test file already has `import com.it.exalt.belair.domain.order.model.OrderStatus;`
-   → Do NOT remove this import
+
+**🔴 CRITICAL RULE: NEVER REUSE PRODUCTION CLASSES IN RED PHASE**
+- Even if the production class exists and is fully implemented, you MUST create inner classes in your test
+- The inner classes are test doubles that ONLY contain what THIS scenario needs
+- This ensures the test fails (RED) if not implemented, even if production code exists
+- REFACTOR phase will recognize the production class exists and merge the implementations
+
+1. □ Do NOT import or use the production class in your test body
+   - ❌ WRONG: `Order order = new Order(...)` where Order is from prod import
+   - ✅ RIGHT: `Order order = new Order(...)` where Order is an inner class
+   → RED STOP: If test references production class, rewrite to use inner class
+
+2. □ Keep imports of production classes (if they exist) but DO NOT USE them in test code
+   Example: Test file may have `import com.it.exalt.belair.domain.order.model.OrderStatus;` 
+            but test code must NOT reference it directly
+   → Reason: Allows existing tests to continue passing, while this test uses only inner classes
    
-2. □ For THIS scenario, create a MINIMAL inner class with same name
+3. □ For THIS scenario, create a MINIMAL inner class with same name as production class
    Example: If prod `OrderStatus` has {PENDING, ACKNOWLEDGED, READY, CANCELLED}
-            but THIS scenario only uses PENDING
+            and THIS scenario only uses PENDING
             → Create inner class `OrderStatus` with ONLY {PENDING}
-   → Reason: Inner class shadows prod import, only for THIS test
+   → The inner class shadows the production import in this test file scope
    
-3. □ Ensure test can distinguish:
+4. □ Ensure test isolation:
    - Existing tests: use production import (still passing)
-   - THIS test: use inner class (matches scenario)
+   - THIS test: use inner class (must fail until GREEN implements it)
    
-4. □ **CRITICAL: Do NOT adapt, modify, or touch production code**
-   → Your inner class is temporary
-   → REFACTOR phase will merge inner class with production class
+5. □ **CRITICAL: Do NOT adapt, modify, or touch production code**
+   → Your inner classes are temporary doubles
+   → REFACTOR phase will merge inner classes with production classes once they're working
 
 ### Validation Checklist
+- ✅ All inner classes created for THIS test scenario ONLY
+- ✅ No production classes referenced in test execution logic
 - ✅ Inner class has ONLY values/methods used in THIS scenario
-- ✅ Production import is preserved (if class existed)
+- ✅ Production imports preserved (for other tests)
 - ✅ Existing tests remain unaffected
 - ✅ No production code modified
 
 **Decision: Inner classes ready for compilation check?**
 → If NO to any: REWRITE inner classes
+
+**RED phase MUST FAIL:** The test MUST execute and fail until production code is implemented in GREEN
 
 ---
 
@@ -320,9 +337,19 @@ After running test:
   - Infrastructure tests: [infrastructure-testing-guidelines.md](../../docs/agents/instructions/testing/infrastructure-testing-guidelines.md) (Testcontainers, adapters, mappers)
   - Use the test pattern, naming conventions, and assertion styles defined in each guideline. Violation = test failure.
 
+- **ABSOLUTE: Never reuse existing production classes in RED phase, even if they exist and are fully implemented.**
+  - VIOLATION: Test imports and uses `Order order = new Order(...)` from production package
+  - CORRECT: Create inner class `Order` that shadows the production import and contains ONLY what THIS test uses
+  - REASON: RED must fail until GREEN explicitly implements the required logic. Using production code makes the test pass prematurely.
+  - REFACTOR phase will recognize production classes exist and wire them properly, removing the inner classes.
+  - **This applies to ALL classes**: Domain Models, Value Objects, Entities, Use Cases, Services, Repositories, etc.
+  - If production class exists with more fields/methods than needed → create minimal inner class for this test scenario
+  - The inner class is a temporary test double, not the final implementation
+
 - **ABSOLUTE: The test MUST fail when executed.**
   - Compilation success ≠ RED success. The test must execute and fail (throw exception or assertion error).
-  - If the test passes, you violated RED by implementing production logic.
+  - If the test passes, you violated RED by implementing production logic or reusing production classes.
+  - If test passes when it should fail → rewrite to use inner classes that throw `UnsupportedOperationException`
 
 ## Examples
 
