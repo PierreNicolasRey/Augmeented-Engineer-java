@@ -22,8 +22,9 @@ In the same context, for the REFACTOR agent :
 
 ## Fighting anticipation
 For the RED agent, anticipation was an issue.
-- When implementing a new scenario, this agent tends to anticipate by creating more inner classes than necessary like custom exceptions not covered by this scenario but by another
+- When implementing a new scenario, this agent tends to anticipate by creating more inner classes than necessary like custom exceptions not covered by this scenario but by another or implementing inner class whose methods are used in the THEN and are unreachable
     - Solution : reinforced the anti-anticipation rules to ensure the production of was is needed ONLY.
+    - Solution : reinforced the anti-anticipation rules to ensure production of GIVEN and WHEN code only without anticipating on the THEN.
 
 Note : The GREEN and REFACTOR agents handle this anticipation problem better, as the GREEN agent only works with what the RED gave it and the REFACTOR, with what the GREEN gave it.
 
@@ -43,3 +44,4 @@ In the start of the implementon of the custom agents, there were no explicit "HA
 ## Personal Note
 Overall, these agents, after reinforcing the rules are working well with minimal deviation (ex : single unused import in a test file).
 To go further, it would be best to concise the custom-agents files, as i think the are too long, to reduce the context space taken by these files in addition with the other guidelines files BUT still ensuring that it doesn't cause workflow regression.
+It would also be an improvement that the agent pass in its handoff the json output file directly to the next agent.

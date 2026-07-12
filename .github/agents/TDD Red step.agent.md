@@ -87,6 +87,73 @@ The numbered steps below detail HOW to execute each HARD STOP. Follow them in se
 
 ## 🛑 HARD STOP #3 - INNER CLASSES FOR CURRENT SCENARIO ONLY
 
+**CRITICAL ANTI-ANTICIPATION RULE: Only create methods/fields that are executed BEFORE the test fails**
+
+A method/field exists in RED if and only if:
+1. It is called during GIVEN (setup phase)
+2. It is called by the WHEN method signature itself (constructor parameters, method parameters)
+
+A method/field is **FORBIDDEN** if:
+- It exists only because THEN references it (anticipation via backward reading)
+- It's never reached before the UnsupportedOperationException is thrown
+
+**Example of anticipation violation:**
+```java
+// ❌ WRONG: removeItem() is only in THEN, never called before WHEN throws exception
+Order {
+    void removeItem(String id) { throw UnsupportedOperationException; }
+}
+
+// ❌ WRONG: getEstimatedReadinessAt() is only in THEN, never called before exception
+Order {
+    Instant getEstimatedReadinessAt() { return null; }
+}
+
+// ❌ WRONG: OrderChangeApprovedEvent created to satisfy THEN assertions
+static class OrderChangeApprovedEvent {
+    String getOrderId() { return orderId; }  // Never called in RED
+}
+
+// ✅ CORRECT: getId() called by TestOrderRepository.save() during GIVEN
+Order {
+    String getId() { return id; }  // Called before exception
+}
+
+// ✅ CORRECT: addItem() called during GIVEN setup
+Order {
+    void addItem(OrderItem item) { items.add(item); }  // Called before exception
+}
+```
+
+**Execution Flow Analysis (RED Phase):**
+```
+┌─ GIVEN (setup)
+│  ├─ Create Order(id, festivalGoerId, status)
+│  ├─ order.addItem(item) ← Called ✓
+│  ├─ orderRepository.save(order) → calls order.getId() ← Called ✓
+│  └─ changeRequestRepository.save(cr) → calls cr.getOrderId() ← Called ✓
+│
+├─ WHEN (action)
+│  └─ sut.approveChange(...) ← Throws UnsupportedOperationException ✗ STOP HERE
+│
+└─ THEN (assertions) ← NEVER REACHED
+   ├─ orderRepository.findById() ✗ Not called
+   ├─ order.getItems() ✗ Not called
+   ├─ order.getEstimatedReadinessAt() ✗ Not called
+   ├─ order.removeItem() ✗ Not called
+   └─ eventPublisher.getPublishedEvents() ✗ Not called
+```
+
+**Anti-Anticipation Checklist:**
+1. □ Did you create a method because THEN references it?
+   → DELETE it. THEN is unreachable in RED.
+   
+2. □ Does WHEN throw exception before any THEN logic could execute?
+   → YES: Then ONLY include methods that GIVEN needs.
+   
+3. □ Did you read THEN to design inner class structure?
+   → You violated RED. Redesign from GIVEN + WHEN only.
+
 ### Case 1: Production class DOES NOT exist yet
 1. □ Does the test DIRECTLY reference this class?
    Example: `new OrderStatus()` or `OrderItem.create()` in test?
@@ -311,19 +378,33 @@ After running test:
 
 **Zero tolerance for anticipation. These rules are non-negotiable.**
 
+- **ABSOLUTE: Never read THEN to design RED inner classes.**
+  - Test intent (THEN) must NOT influence structure in RED
+  - Structure comes ONLY from GIVEN + WHEN
+  - If WHEN throws exception on first call, NO methods exist except those needed for GIVEN/setup
+  - **Violation example**: Creating `getEstimatedReadinessAt()`, `removeItem()`, `getPublishedEvents()` because THEN asserts them
+  - **Consequence**: The test would pass prematurely in GREEN or create false failures due to untested paths
+
+- **ABSOLUTE: Execution Flow stops at the WHEN exception**
+  - GIVEN executes fully (setup succeeds)
+  - WHEN executes one line, then `throw UnsupportedOperationException`
+  - THEN is unreachable and must be commented out or inside a region that never executes
+  - Any method not called before the exception is **anticipation**
+
 - **ABSOLUTE: No production interfaces, ports, or abstract classes in `src/main/java` unless the test directly imports them.**
   - If you write `OrderRepository` in `src/main/java` but the test never imports it, you failed RED.
   - If you need to pass something to the UseCase constructor, check first: can the test pass a simple mock/Fake from `src/test/java` instead? If yes, do that.
 
-- **ABSOLUTE: Enums contain ONLY the values referenced in the test.**
+- **ABSOLUTE: Enums contain ONLY the values referenced in the test (before exception).**
   - If the test asserts `status == PENDING`, the enum has only `PENDING`.
   - If a scenario future might need `ACKNOWLEDGED`, ignore it. That's GREEN's job.
-  - **Violation example**: Creating `OrderStatus { PENDING, ACKNOWLEDGED, READY, CANCELLED }` when the test only uses `PENDING` is a failure.
+  - **Violation example**: Creating `OrderStatus { PENDING, ACKNOWLEDGED, READY, CANCELLED }` when WHEN throws exception before any transition check.
 
-- **ABSOLUTE: Classes contain ONLY methods called by the test.**
-  - Do not add getters, setters, or helper methods the test doesn't invoke.
-  - Do not add fields unless the test reads or writes them.
-  - **Violation example**: Adding `getTotalCost()` or `reserve()` methods when the test doesn't call them is over-design.
+- **ABSOLUTE: Classes contain ONLY methods called in the execution flow (before exception).**
+  - Do not add getters, setters, or helper methods the test doesn't invoke **before the WHEN method throws**.
+  - Do not add fields unless the test reads or writes them **before the exception**.
+  - **Violation example**: Adding `getTotalCost()`, `removeItem()`, `recalculateTime()` when WHEN throws exception immediately = anticipation.
+  - **Correct approach**: If WHEN throws on first call, create only constructors and methods needed for GIVEN setup (e.g., `addItem()`, `getId()` for repository lookups).
 
 - **ABSOLUTE: No nested or intermediate structures.**
   - Do not create separate Mapper classes, DTO classes, or domain-event classes unless the test instantiates or references them.
