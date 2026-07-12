@@ -147,7 +147,7 @@ Feature: Approve or Reject Order Changes
 Scenario: Approve change request with transferable prepared items
   Given an order "ord-001" with status "ACKNOWLEDGED" containing 3 items (2 prepared)
   And a change request to add 1 new item and remove 1 prepared item
-  And at least 1 item can be transferred to another order
+  And the removed prepared item can be transferred to another order
   When the bartender approves the change
   Then the order items are updated (1 removed, 1 added)
   And the estimated readiness time is recalculated
