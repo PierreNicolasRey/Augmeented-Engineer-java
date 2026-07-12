@@ -1,6 +1,8 @@
 package com.exalt.it.belair.domain.order.model;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -15,6 +17,7 @@ public class Order {
     private int reservedDrinkTokens = 0;
     private int reservedSnackTokens = 0;
     private Instant updatedAt;
+    private LocalDateTime estimatedReadinessAt;
 
     /**
      * Constructs an Order with the specified parameters.
@@ -36,6 +39,14 @@ public class Order {
      * @return the order ID
      */
     public String getOrderId() {
+        return orderId;
+    }
+
+    /**
+     * Gets the order ID (alias for getOrderId()).
+     * @return the order ID
+     */
+    public String getId() {
         return orderId;
     }
 
@@ -70,7 +81,43 @@ public class Order {
      * @return the list of items
      */
     public List<OrderItem> getItems() {
-        return items;
+        return new ArrayList<>(items);
+    }
+
+    /**
+     * Adds an item to this order.
+     * 
+     * @param item the item to add
+     */
+    public void addItem(OrderItem item) {
+        items.add(item);
+    }
+
+    /**
+     * Removes an item from this order by its ID.
+     * 
+     * @param itemId the ID of the item to remove
+     */
+    public void removeItem(String itemId) {
+        items.removeIf(item -> itemId.equals(item.getId()));
+    }
+
+    /**
+     * Sets the estimated readiness time for this order.
+     * 
+     * @param estimatedReadinessAt the estimated time when the order will be ready
+     */
+    public void setEstimatedReadinessAt(LocalDateTime estimatedReadinessAt) {
+        this.estimatedReadinessAt = estimatedReadinessAt;
+    }
+
+    /**
+     * Gets the estimated readiness time for this order.
+     * 
+     * @return the estimated readiness time, or null if not set
+     */
+    public LocalDateTime getEstimatedReadinessAt() {
+        return estimatedReadinessAt;
     }
 
     /**

@@ -1,8 +1,16 @@
 package com.exalt.it.belair.domain.order.usecases;
 
+import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
+import com.exalt.it.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.Order;
+import com.exalt.it.belair.domain.order.model.OrderChangeRequest;
+import com.exalt.it.belair.domain.order.events.OrderChangeApprovedEvent;
+import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
+import com.exalt.it.belair.domain.order.ports.out.IChangeRequestRepository;
+import com.exalt.it.belair.domain.order.ports.out.IEventPublisher;
+import com.exalt.it.belair.domain.order.ports.out.IItemTransferService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,18 +39,19 @@ class ApproveOrderChangeUseCaseTest {
         // GIVEN an order "ord-001" with status "ACKNOWLEDGED" containing 3 items (2 prepared)
         String orderId = "ord-001";
         String festivalGoerId = "fgv-001";
-        Order order = new Order(orderId, festivalGoerId, OrderStatusEnum.ACKNOWLEDGED);
-        order.addItem(new OrderItem("item-1", "DRINK", true));   // prepared
-        order.addItem(new OrderItem("item-2", "DRINK", true));   // prepared
-        order.addItem(new OrderItem("item-3", "SNACK", false));  // not prepared
+        List<OrderItem> items = new ArrayList<>();
+        items.add(new OrderItem("item-1", "DRINK", "NORMAL_ALCOHOLIC", 1, true));   // prepared
+        items.add(new OrderItem("item-2", "DRINK", "NORMAL_ALCOHOLIC", 1, true));   // prepared
+        items.add(new OrderItem("item-3", "FOOD", "SNACK", 1, false));  // not prepared
+        Order order = new Order(orderId, festivalGoerId, items, OrderStatusEnum.ACKNOWLEDGED);
         orderRepository.save(order);
         
         // And a change request to add 1 new item and remove 1 prepared item
         OrderChangeRequest changeRequest = new OrderChangeRequest(
             orderId,
             festivalGoerId,
-            List.of(new OrderItem("item-1", "DRINK", true)), // items to remove
-            List.of(new OrderItem("item-4", "SNACK", false))  // items to add
+            List.of(new OrderItem("item-1", "DRINK", "NORMAL_ALCOHOLIC", 1, true)), // items to remove
+            List.of(new OrderItem("item-4", "FOOD", "SNACK", 1, false))  // items to add
         );
         changeRequestRepository.save(changeRequest);
         
@@ -61,195 +70,7 @@ class ApproveOrderChangeUseCaseTest {
         assertThat(publishedEvents.get(0).getFestivalGoerId()).isEqualTo(festivalGoerId);
     }
     
-    // ============ INNER CLASSES: ALL PRODUCTION CODE BELOW ============
-    
-    enum OrderStatusEnum {
-        PENDING,
-        ACKNOWLEDGED
-    }
-    
-    static class OrderItem {
-        private final String id;
-        private final String type;
-        private final boolean prepared;
-        
-        OrderItem(String id, String type, boolean prepared) {
-            this.id = id;
-            this.type = type;
-            this.prepared = prepared;
-        }
-        
-        String getId() {
-            return id;
-        }
-        
-        String getType() {
-            return type;
-        }
-        
-        boolean isPrepared() {
-            return prepared;
-        }
-    }
-    
-    static class Order {
-        private final String id;
-        private final String festivalGoerId;
-        private OrderStatusEnum status;
-        private List<OrderItem> items;
-        private LocalDateTime estimatedReadinessAt;
-        
-        Order(String id, String festivalGoerId, OrderStatusEnum status) {
-            this.id = id;
-            this.festivalGoerId = festivalGoerId;
-            this.status = status;
-            this.items = new ArrayList<>();
-        }
-        
-        String getId() {
-            return id;
-        }
-        
-        String getFestivalGoerId() {
-            return festivalGoerId;
-        }
-        
-        void addItem(OrderItem item) {
-            items.add(item);
-        }
-        
-        void removeItem(String itemId) {
-            items.removeIf(item -> itemId.equals(item.getId()));
-        }
-        
-        List<OrderItem> getItems() {
-            return new ArrayList<>(items);
-        }
-        
-        void setEstimatedReadinessAt(LocalDateTime estimatedReadinessAt) {
-            this.estimatedReadinessAt = estimatedReadinessAt;
-        }
-        
-        LocalDateTime getEstimatedReadinessAt() {
-            return estimatedReadinessAt;
-        }
-    }
-    
-    static class OrderChangeRequest {
-        private final String orderId;
-        private final String requestedBy;
-        private final List<OrderItem> itemsToRemove;
-        private final List<OrderItem> itemsToAdd;
-        
-        OrderChangeRequest(String orderId, String requestedBy, List<OrderItem> itemsToRemove, List<OrderItem> itemsToAdd) {
-            this.orderId = orderId;
-            this.requestedBy = requestedBy;
-            this.itemsToRemove = itemsToRemove;
-            this.itemsToAdd = itemsToAdd;
-        }
-        
-        String getOrderId() {
-            return orderId;
-        }
-        
-        List<OrderItem> getItemsToRemove() {
-            return itemsToRemove;
-        }
-        
-        List<OrderItem> getItemsToAdd() {
-            return itemsToAdd;
-        }
-    }
-    
-    static class ApproveOrderChangeUseCase {
-        private final IOrderRepository orderRepository;
-        private final IChangeRequestRepository changeRequestRepository;
-        private final IEventPublisher eventPublisher;
-        private final IItemTransferService itemTransferService;
-        
-        ApproveOrderChangeUseCase(IOrderRepository orderRepository, IChangeRequestRepository changeRequestRepository, IEventPublisher eventPublisher, IItemTransferService itemTransferService) {
-            this.orderRepository = orderRepository;
-            this.changeRequestRepository = changeRequestRepository;
-            this.eventPublisher = eventPublisher;
-            this.itemTransferService = itemTransferService;
-        }
-        
-        void approveChange(String orderId, String bartenderId) {
-            // Load the order
-            Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
-            
-            // Load the change request
-            OrderChangeRequest changeRequest = changeRequestRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Change request not found for order: " + orderId));
-            
-            // Verify that all prepared items to remove can be transferred
-            for (OrderItem itemToRemove : changeRequest.getItemsToRemove()) {
-                if (itemToRemove.isPrepared()) {
-                    boolean canTransfer = itemTransferService.canTransferPreparedItem(itemToRemove.getId(), itemToRemove.getType());
-                    if (!canTransfer) {
-                        throw new IllegalStateException("Cannot transfer prepared item: " + itemToRemove.getId());
-                    }
-                }
-            }
-            
-            // Remove items from order
-            for (OrderItem itemToRemove : changeRequest.getItemsToRemove()) {
-                order.removeItem(itemToRemove.getId());
-            }
-            
-            // Add items to order
-            for (OrderItem itemToAdd : changeRequest.getItemsToAdd()) {
-                order.addItem(itemToAdd);
-            }
-            
-            // Set estimated readiness time
-            order.setEstimatedReadinessAt(LocalDateTime.now());
-            
-            // Save updated order
-            orderRepository.save(order);
-            
-            // Publish event
-            OrderChangeApprovedEvent event = new OrderChangeApprovedEvent(orderId, order.getFestivalGoerId());
-            eventPublisher.publish(event);
-        }
-    }
-    
-    interface IOrderRepository {
-        Order save(Order order);
-        Optional<Order> findById(String orderId);
-    }
-    
-    interface IChangeRequestRepository {
-        OrderChangeRequest save(OrderChangeRequest changeRequest);
-        Optional<OrderChangeRequest> findByOrderId(String orderId);
-    }
-    
-    interface IEventPublisher {
-        void publish(Object event);
-    }
-    
-    interface IItemTransferService {
-        boolean canTransferPreparedItem(String itemId, String itemType);
-    }
-    
-    static class OrderChangeApprovedEvent {
-        private final String orderId;
-        private final String festivalGoerId;
-        
-        OrderChangeApprovedEvent(String orderId, String festivalGoerId) {
-            this.orderId = orderId;
-            this.festivalGoerId = festivalGoerId;
-        }
-        
-        String getOrderId() {
-            return orderId;
-        }
-        
-        String getFestivalGoerId() {
-            return festivalGoerId;
-        }
-    }
+    // ============ TEST DOUBLES ============
     
     // ============ TEST DOUBLES ============
     
