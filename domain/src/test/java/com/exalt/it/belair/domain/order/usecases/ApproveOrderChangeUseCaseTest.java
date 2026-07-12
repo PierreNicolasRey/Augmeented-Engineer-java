@@ -70,10 +70,8 @@ class ApproveOrderChangeUseCaseTest {
         assertThat(publishedEvents.get(0).getFestivalGoerId()).isEqualTo(festivalGoerId);
     }
     
-    // ============ TEST DOUBLES ============
-    
-    // ============ TEST DOUBLES ============
-    
+    // ============ TEST FAKES ============
+        
     static class TestOrderRepository implements IOrderRepository {
         private final List<Order> store = new ArrayList<>();
         
