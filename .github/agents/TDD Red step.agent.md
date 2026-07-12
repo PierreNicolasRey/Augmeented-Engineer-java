@@ -702,23 +702,27 @@ class OrderRepositoryAdapterIntegrationTest {
 The summary of changes made to be returned at the end of the turn : 
 ```json
 {
+  "feature": <name of the feature being tested>,
   "description": <short description of the test scenario implemented>,
+  "scenario": <gherkin scenario passed as input>,
   "test_file_path": <test file path>,
   "test_method_name": <test method name>
 }
 ```
-### Examples 
+### Example
 ```json
 {
-  "description": "Successfully export contacts",
-  "test_file_path": "src/test/java/com/example/domain/contact/ContactExportUseCaseTest.java",
-  "test_method_name": "shouldProduceExportDtoWhenContactsExist"
-}
-```
-```json
-{
-  "description": "Successfully export contacts",
-  "test_file_path": "tests/Belair.Domain.Tests/Contacts/ContactExportTests.cs",
-  "test_method_name": "Export_WhenUserHasContacts_ShouldReturnAllContactsInExportDto"
+"feature": "Approve or Reject Order Changes",
+"description": "Approve change request with transferable prepared items",
+"scenario": "Scenario: Approve change request with transferable prepared items
+  Given an order "ord-001" with status "ACKNOWLEDGED" containing 3 items (2 prepared)
+  And a change request to add 1 new item and remove 1 prepared item
+  And the removed prepared item can be transferred to another order
+  When the bartender approves the change
+  Then the order items are updated (1 removed, 1 added)
+  And the estimated readiness time is recalculated
+  And OrderChangeApprovedEvent is published",
+"test_file_path": "domain/src/test/java/com/exalt/it/belair/domain/order/usecases/ApproveOrderChangeUseCaseTest.java",
+"test_method_name": "approveChange_shouldUpdateOrderItems_whenChangingAcknowledgedOrderWithTransferablePreparedItems"
 }
 ```

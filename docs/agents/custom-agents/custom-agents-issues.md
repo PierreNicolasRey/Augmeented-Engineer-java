@@ -41,6 +41,16 @@ In the start of the implementon of the custom agents, there were no explicit "HA
         - Solution : convert the existing inner steps into effective HARD STOPS allowed the agents to better follow the workflow step-by-step and checking each of these steps internally.
 
 
+## Minimal implementation confusion
+When RED produces a true minimal implementation, sometimes GREEN covers only this minimal implementation and not the full scenario.
+Ex : RED is implementing a useCase needing a passing inner check before pursuing. It has two options :
+    - implementing minimal interface with a method to return true
+    - not implementing anything and leave a comment on the test that no check = passing check
+Both option are valid for RED minimal implementation.
+With the latest, GREEN don't know what to do with this comment and thus don't implement any check (even minimal as its not the point of the current scenario and file tested).
+        - Solution : pass the name of the feature and the scenario to GREEN to from the ouput of RED so it can have the full picture, not just the test it has to make pass. 
+
+
 ## Personal Note
 Overall, these agents, after reinforcing the rules are working well with minimal deviation (ex : single unused import in a test file).
 To go further, it would be best to concise the custom-agents files, as i think the are too long, to reduce the context space taken by these files in addition with the other guidelines files BUT still ensuring that it doesn't cause workflow regression.
