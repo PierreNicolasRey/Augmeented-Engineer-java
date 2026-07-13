@@ -105,7 +105,7 @@ During REFACTOR, we extract inner classes from the test file to production modul
 
 ---
 
-## 🛑 HARD STOP #1.1 - PRE-EXTRACTION DEPENDENCY CHECK
+## 🛑 HARD STOP #1 - PRE-EXTRACTION DEPENDENCY CHECK
 
 Before extracting class X:
 
@@ -135,7 +135,7 @@ Before extracting class X:
 
 ---
 
-## 🛑 HARD STOP #1.2 - CONTENT-BASED CLASS MATCHING
+## 🛑 HARD STOP #2 - CONTENT-BASED CLASS MATCHING
 
 Before declaring "this class doesn't exist in production":
 
@@ -175,7 +175,7 @@ Example scenario:
 
 ---
 
-## 🛑 HARD STOP #1.3 - ANTI-ANTICIPATION VERIFICATION
+## 🛑 HARD STOP #3 - ANTI-ANTICIPATION VERIFICATION
 
 **Critical: Verify NO anticipation occurred in RED or GREEN phases.**
 
@@ -195,7 +195,39 @@ If you find anticipatory code in inner classes (e.g., `OrderCannotBeCancelledExc
 → If NO: Revert anticipatory code to TODO comments
 
 ---
+## 🛑 HARD STOP #4 - VALIDATE BUSINESS RULES & CONTRACTS
 
+**Critical: Verify extracted classes respect existing business invariants and contracts.**
+
+Before extracting ANY class:
+
+1. ☐ Have you studied the EXISTING production code for this domain?
+   - Read getter/setter methods to understand dependencies
+   - Identify mandatory fields (which fields can NEVER be null)
+   - Check calculations/validations that depend on specific fields
+   → Example: `itemSubtype` is mandatory in `OrderItem` because `getDrinkTokenCost()` depends on it
+   → REFACTOR STOP: If business rule violated, revert to RED!
+
+2. ☐ Does this class violate ANY existing invariants?
+   - ❌ Example: `itemSubtype = null` violates OrderItem contract (used in cost calculations)
+   - ❌ Example: Empty order (`items = []`) violates Order contract (orders must have items)
+   → REFACTOR STOP: If contract violated, do NOT extract!
+
+3. ☐ Are there nullable fields that should be mandatory?
+   - Search for null checks in existing methods
+   - Search for method calls that depend on field presence
+   - If field is used without null-check, it's mandatory
+   → REFACTOR STOP: Mark as mandatory, investigate RED if null found!
+
+4. ☐ Is this class ACTUALLY USED in the test scenario?
+   - Search for instantiations/calls in test
+   - Reject anticipatory classes (not called by test)
+   → REFACTOR STOP: Only extract classes actually used!
+
+**Decision: Class respects business rules and contracts?
+→ If NO to any: Do NOT extract. Flag issue back to the user.**
+
+---
 ### Core Refactor Principles
 
 **CRITICAL CLEANUP REQUIREMENT:**
@@ -251,6 +283,8 @@ If you find anticipatory code in inner classes (e.g., `OrderCannotBeCancelledExc
 
 The agent receives the **JSON output from the GREEN phase**, which contains:
 - `test_file`: The test file path
+- `feature_name`: Name of the feature being implemented (e.g., "Approve or Reject Order Changes")
+- `scenario`: Complete Gherkin scenario
 - `inner_classes_added`: List of inner classes with type (enum, record, class)
 - `test_status`: Confirms test is PASSING
 
@@ -264,6 +298,8 @@ The agent **automatically accesses**:
 ```json
 {
   "phase": "GREEN",
+  "feature_name": "Approve or Reject Order Changes",
+  "scenario": "Approve change request with transferable prepared items",
   "test_file": "domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java",
   "inner_classes_added": [
     {"name": "DrinkTypeEnum", "type": "enum"},
@@ -289,7 +325,7 @@ The agent **automatically accesses**:
 
 ---
 
-## 🛑 HARD STOP #2 - PHASE 1 MODIFY (Create Production File)
+## 🛑 HARD STOP #5 - PHASE 1 MODIFY (Create Production File)
 
 Creating production file for class X:
 
@@ -320,7 +356,7 @@ Creating production file for class X:
 
 ---
 
-## 🛑 HARD STOP #3 - PHASE 2 TEST (Add Import + Run)
+## 🛑 HARD STOP #6 - PHASE 2 TEST (Add Import + Run)
 
 Adding import and running test:
 
@@ -348,7 +384,7 @@ Adding import and running test:
 
 ---
 
-## 🛑 HARD STOP #4 - PHASE 3 VALIDATE
+## 🛑 HARD STOP #7 - PHASE 3 VALIDATE
 
 Validating behavior preservation:
 
@@ -367,7 +403,7 @@ Validating behavior preservation:
 
 ---
 
-## 🛑 HARD STOP #5 - PHASE 4 CLEANUP (Delete Inner Class)
+## 🛑 HARD STOP #8 - PHASE 4 CLEANUP (Delete Inner Class)
 
 Deleting inner class from test:
 
@@ -387,7 +423,7 @@ Deleting inner class from test:
 
 ---
 
-## 🛑 HARD STOP #6 - PHASE 5 VERIFY (Re-run)
+## 🛑 HARD STOP #9 - PHASE 5 VERIFY (Re-run)
 
 Re-running test after deletion:
 
@@ -415,7 +451,7 @@ Re-running test after deletion:
 
 ---
 
-## 🛑 HARD STOP #7 - PHASE 6 CHECKPOINT
+## 🛑 HARD STOP #10 - PHASE 6 CHECKPOINT
 
 Before moving to next class:
 
@@ -433,7 +469,7 @@ Before moving to next class:
 
 ---
 
-## 🛑 HARD STOP #8 - POST-REFACTOR FULL VERIFICATION
+## 🛑 HARD STOP #11 - POST-REFACTOR FULL VERIFICATION
 
 After ALL extractions complete:
 
@@ -467,7 +503,7 @@ After ALL extractions complete:
 
 ---
 
-## 🛑 HARD STOP #9 - ADAPT EXISTING MODELS
+## 🛑 HARD STOP #12 - ADAPT EXISTING MODELS
 
 If production class already exists and you need to adapt:
 
@@ -493,7 +529,7 @@ If production class already exists and you need to adapt:
 
 ---
 
-## 🛑 HARD STOP #10 - TEST-ONLY COMMENT CLEANUP
+## 🛑 HARD STOP #13 - TEST-ONLY COMMENT CLEANUP
 
 After all inner classes extracted, clean production code of test-specific artifacts:
 
@@ -526,17 +562,31 @@ After all inner classes extracted, clean production code of test-specific artifa
 
 ---
 
-## 🛑 HARD STOP #11 - PRODUCTION CODE DOCUMENTATION
+## 🛑 HARD STOP #14 - PRODUCTION CODE DOCUMENTATION & JAVADOC VALIDATION
+
+**CRITICAL: Javadoc validation is REFACTOR's responsibility. Not GREEN's, not RED's—MINE.**
 
 Ensure all production code is properly documented:
 
 1. ☐ Each extracted class has Javadoc?
-   - Domain Models: Document business intent
+   - Domain Models: Document business intent (not implementation)
    - Use Cases: Document command/action purpose
    - DTOs: Document purpose and usage context
    → REFACTOR STOP: Add missing Javadoc
-   
-2. ☐ Complex methods documented with purpose (WHY, not WHAT)?
+
+2. ☐ Javadoc is FACTUALLY CORRECT and aligns with business logic?
+   - Example ❌: "@param type the item type (DRINK, SNACK)" when type is DRINK or FOOD
+   - Example ❌: "simplified constructor" when fields are hardcoded (not simplified, restricted)
+   - Example ✅: "@param itemType the type of item (DRINK, FOOD)" with separate itemSubtype docs
+   → **REFACTOR STOP: If Javadoc contradicts business logic, FIX IT before extraction.**
+
+3. ☐ Nullable fields properly documented?
+   - If field CAN be null: Document it explicitly in Javadoc
+   - If field is MANDATORY (cannot be null): Document it with clarity
+   - Example: "@param itemSubtype the subtype enum name (e.g., NORMAL_ALCOHOLIC, SNACK) - MUST NOT be null"
+   → REFACTOR STOP: If mandatory field documented as optional, FIX IT.
+
+4. ☐ Complex methods documented with purpose (WHY, not WHAT)?
    ```java
    // ✅ Good: Explains WHY
    // Reserve tokens before creating order to prevent double-booking
@@ -545,15 +595,18 @@ Ensure all production code is properly documented:
    // Reserve tokens
    ```
    → REFACTOR STOP: Add purpose comments
-   
-3. ☐ All public methods have parameter/return documentation?
 
-**Decision: Production code properly documented?**
-→ If NO: Add documentation
+5. ☐ All public methods have complete parameter/return documentation?
+   - All @param documented (with types and purpose)
+   - All @return documented (with types and meaning)
+   - All @throws documented (with reason)
+
+**Decision: Production code properly documented with CORRECT Javadoc?**
+→ If NO to any: Fix Javadoc before extraction
 
 ---
 
-## 🛑 HARD STOP #12 - UPDATE IMPLEMENTED-FEATURES-DOCUMENTATION
+## 🛑 HARD STOP #15 - UPDATE IMPLEMENTED-FEATURES-DOCUMENTATION
 
 Update global feature documentation following the official template:
 

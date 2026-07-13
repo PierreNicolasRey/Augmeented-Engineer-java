@@ -51,6 +51,13 @@ With the latest, GREEN don't know what to do with this comment and thus don't im
         - Solution : pass the name of the feature and the scenario to GREEN to from the ouput of RED so it can have the full picture, not just the test it has to make pass. 
 
 
+## Business rules validation and contract enforcement
+When production code already exists, agents might create inner classes that violate existing business invariants (mandatory fields, empty collections, nullable fields used in calculations but not in the test) while following the minimal implementation rule.
+Ex: OrderItem constructors missing mandatory itemSubtype; Order constructors creating empty items lists.
+        - Solution : Added rules requiring validation of existing business rules before implementation and extraction ensuring that minimal is never violating invariants. 
+        - Solution : Pass feature/scenario context through agent chain for better business intent understanding and allow EXCEPTIONNALY GREEN to modify the test if RED created non-compliant code.
+
+
 ## Personal Note
 Overall, these agents, after reinforcing the rules are working well with minimal deviation (ex : single unused import in a test file).
 To go further, it would be best to concise the custom-agents files, as i think the are too long, to reduce the context space taken by these files in addition with the other guidelines files BUT still ensuring that it doesn't cause workflow regression.

@@ -51,9 +51,9 @@ Before ANY implementation:
 
 ---
 
-## 🛑 HARD STOP #2 - NO ANTICIPATION (CRITICAL)
+## 🛑 HARD STOP #2 - NO ANTICIPATION & BUSINESS RULE COMPLIANCE (CRITICAL)
 
-**Verify the RED test matches current scenario only before implementing.**
+**Verify the RED test matches current scenario AND respects business invariants before implementing.**
 
 1. □ Does the test use ALL inner classes you plan to implement?
    - Example: Test creates `new Order()` → Implement Order ✓
@@ -65,10 +65,26 @@ Before ANY implementation:
    - Example: Method exists but test doesn't call it → DELETE it ✗
    → GREEN STOP: Implement ONLY what test uses
 
-**Refer to:** RED step "HARD STOP #2 - NO ANTICIPATION" if scenario unclear
+3. □ **CRITICAL: Do inner classes respect existing production code business rules?**
+   
+   **If production code exists for a class, study its invariants:**
+   - Does RED create `OrderItem(id, type, prepared)` when prod requires `(id, type, subtype, quantity, prepared)`?
+     → RED VIOLATED business rule (itemSubtype is mandatory for cost calculations)
+   - Does RED create `Order(id, festivalGoerId, status)` when prod requires items list?
+     → RED VIOLATED business rule (orders cannot be empty)
+   - Does RED create enums missing values used in prod calculations?
+     → RED VIOLATED business rule (incomplete type definitions)
+   
+   **If RED test has non-compliant inner classes:**
+   - ⚠️ **EXCEPTION TO RULE:** You are AUTHORIZED to modify the test to fix RED's non-compliance
+   - Example: Change test from `new OrderItem(itemId, type, prepared)` to `new OrderItem(itemId, type, subtype, quantity, prepared)` with all mandatory fields
+   - Example: Change test from `new Order(id, status)` to `new Order(id, festivalGoerId, status, items)` with valid items list
+   - The test still tests the SAME scenario; only constructor signatures are corrected to match production constraints
+   
+   → GREEN STOP: If business rule violated in RED, MUST fix test before implementing
 
-**Decision: Implementation matches ONLY current scenario?**
-→ If NO: STOP and align with RED test first
+**Decision: Inner classes comply with production business invariants?**
+→ If NO: Fix test signature first, then implement
 
 ---
 
@@ -724,6 +740,9 @@ After implementing and passing the test, **ALWAYS** provide output in this forma
 
 ```json
 {
+  "feature": <name of the feature being tested>,
+  "description": <short description of the test scenario implemented>,
+  "scenario": <gherkin scenario passed as input>,
   "test_file_path": <test file path>,
   "test_method_name": <test method name>,
   "implemented_code": [ <a list of the class / enums / interfaces implemented to make the test pass, that are in the test class> ]

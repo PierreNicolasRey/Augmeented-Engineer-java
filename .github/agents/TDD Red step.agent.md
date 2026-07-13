@@ -169,7 +169,7 @@ Order {
 
 **🔴 CRITICAL RULE: NEVER REUSE PRODUCTION CLASSES IN RED PHASE**
 - Even if the production class exists and is fully implemented, you MUST create inner classes in your test
-- The inner classes are test doubles that ONLY contain what THIS scenario needs
+- The inner classes are test fakes that ONLY contain what THIS scenario needs
 - This ensures the test fails (RED) if not implemented, even if production code exists
 - REFACTOR phase will recognize the production class exists and merge the implementations
 
@@ -188,12 +188,40 @@ Order {
             and THIS scenario only uses PENDING
             → Create inner class `OrderStatus` with ONLY {PENDING}
    → The inner class shadows the production import in this test file scope
+
+4. □ Ensure that minimal implementation is still coherent with existing production code and does not violate business rules:
    
-4. □ Ensure test isolation:
+   **This rule applies to EVERY class that already exists in production.** Study existing code before creating inner class.
+   
+   **Example 1 - OrderItem (mandatory field violation):**
+   - Prod code: `OrderItem(itemId, itemType, itemSubtype, quantity)` where `itemSubtype` is used in `getDrinkTokenCost()`
+   - Your scenario: Only needs `OrderItem(itemId, itemType, quantity)` 
+   - ❌ WRONG: Create inner class `OrderItem(itemId, itemType, quantity)` (itemSubtype missing, needed for cost calculations)
+   - ✅ RIGHT: Create inner class `OrderItem(itemId, itemType, itemSubtype, quantity)` even if scenario only uses 3 of 4 params
+   - Reason: Respects production's invariant that itemSubtype cannot be null (it's used in calculations)
+   
+   **Example 2 - Order (mandatory collection):**
+   - Prod code: `Order` requires items list that cannot be empty (orders must have at least one item)
+   - Your scenario: Creates order with just `Order(id, festivalGoerId, status)`
+   - ❌ WRONG: Create inner class `Order(id, festivalGoerId, status)` (items list missing, violates business rule)
+   - ✅ RIGHT: Create inner class `Order(id, festivalGoerId, status, items)` with non-empty items list
+   - Reason: Production code enforces this invariant; your inner class must respect it too
+   
+   **Example 3 - OrderChangeRequest (multiple dependencies):**
+   - Prod code: `OrderChangeRequest(orderId, requestedBy, itemsToRemove, itemsToAdd)` all mandatory
+   - Your scenario: Only needs to store orderId and requestedBy
+   - ❌ WRONG: Create inner class `OrderChangeRequest(orderId, requestedBy)` (collections missing)
+   - ✅ RIGHT: Create inner class `OrderChangeRequest(orderId, requestedBy, itemsToRemove, itemsToAdd)` with empty/minimal collections if needed
+   - Reason: Production enforces full structure; inner class must match this structure
+   
+   → GREEN and REFACTOR will handle merging constructors or extending when this scenario adds new functionality
+   → Do NOT create illogical constructors that omit mandatory fields or violate business constraints
+
+5. □ Ensure test isolation:
    - Existing tests: use production import (still passing)
    - THIS test: use inner class (must fail until GREEN implements it)
    
-5. □ **CRITICAL: Do NOT adapt, modify, or touch production code**
+6. □ **CRITICAL: Do NOT adapt, modify, or touch production code**
    → Your inner classes are temporary doubles
    → REFACTOR phase will merge inner classes with production classes once they're working
 
