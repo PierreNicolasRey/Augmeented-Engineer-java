@@ -1,3 +1,12 @@
+---
+agent: agent
+name: TDD Cycle
+description: This agent is used to orchestrate a full TDD workflow by invoking the TDD Red step, TDD Green step, and TDD Refactor step subagents in sequence. It ensures that the test is written first, then the minimum code is implemented to make the test pass, and finally, the code is refactored for quality while keeping all tests passing.
+argument-hint: Implement the following test scenario by invoking the TDD sub-agents : {input} . Ensure that the new test and all previous ones pass, the code is refactored for quality, and the project architecture is respected. Provide a summary of the changes made during the TDD cycle.
+tools: [vscode/toolSearch, execute/getTerminalOutput, execute/runInTerminal, execute/runTests, execute/testFailure, read/problems, read/readFile, edit/editFiles, search/fileSearch, search/listDirectory, vscodeGeneral/problems, vscodeGeneral/runTests, vscodeGeneral/testFailure, vscodeGeneral/toolSearch, todo, agent/runSubagent]
+model: Claude Haiku 4.5 (copilot)
+---
+
 # TDD Cycle Agent
 
 # Persona
