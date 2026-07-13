@@ -14,6 +14,7 @@ import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
 import com.exalt.it.belair.domain.order.services.EstimatedTimeCalculator;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Use case for acknowledging a pending order.
@@ -61,7 +62,8 @@ public class AcknowledgeOrderUseCase implements AcknowledgeOrderUseCasePort {
 
         int estimatedMinutes = estimatedTimeCalculator.calculateEstimatedTimeMinutes(order);
         Instant now = Instant.now();
-        LocalDateTime estimatedReadinessAt = LocalDateTime.now().plusMinutes(estimatedMinutes);
+        LocalDateTime estimatedReadinessAt = LocalDateTime.ofInstant(now, ZoneId.systemDefault())
+                .plusMinutes(estimatedMinutes);
 
         order.setStatus(OrderStatusEnum.ACKNOWLEDGED);
         order.setEstimatedReadinessAt(estimatedReadinessAt);

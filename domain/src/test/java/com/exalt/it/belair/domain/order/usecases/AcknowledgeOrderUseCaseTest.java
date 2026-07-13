@@ -12,7 +12,6 @@ import com.exalt.it.belair.domain.order.model.OrderStatusEnum;
 import com.exalt.it.belair.domain.order.ports.out.IEventPublisher;
 import com.exalt.it.belair.domain.order.ports.out.IFestivalGoerRepository;
 import com.exalt.it.belair.domain.order.ports.out.IOrderRepository;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +54,7 @@ class AcknowledgeOrderUseCaseTest {
         order.setReservedTokens(2, 3);
         orderRepository.add(order);
 
+        LocalDateTime acknowledgmentBaseline = LocalDateTime.now();
         sut.execute(orderId);
 
         Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
@@ -74,8 +74,9 @@ class AcknowledgeOrderUseCaseTest {
         assertThat(event.getOrderId()).isEqualTo(orderId);
         assertThat(event.getFestivalGoerId()).isEqualTo(festivalGoerId);
         assertThat(event.getEstimatedReadinessAt()).isEqualTo(updatedOrder.getEstimatedReadinessAt());
-        assertThat(Duration.between(LocalDateTime.now(), event.getEstimatedReadinessAt()).toMinutes())
-                .isBetween(1L, 3L);
+        assertThat(event.getEstimatedReadinessAt())
+                .isAfterOrEqualTo(acknowledgmentBaseline.plusMinutes(3))
+                .isBeforeOrEqualTo(acknowledgmentBaseline.plusMinutes(4));
         assertThat(event.getAcknowledgedAt()).isNotNull();
     }
 
@@ -128,6 +129,7 @@ class AcknowledgeOrderUseCaseTest {
 
     static class TestFestivalGoerRepository implements IFestivalGoerRepository {
         private final List<FestivalGoerBalanceEntry> balances = new ArrayList<>();
+        private String lastRequestedFestivalGoerId;
 
         void addBalance(String festivalGoerId, FestivalGoerBalance balance) {
             balances.removeIf(entry -> entry.festivalGoerId.equals(festivalGoerId));
@@ -136,6 +138,7 @@ class AcknowledgeOrderUseCaseTest {
 
         @Override
         public FestivalGoerBalance getBalance(String festivalGoerId) {
+            lastRequestedFestivalGoerId = festivalGoerId;
             return balances.stream()
                     .filter(entry -> entry.festivalGoerId.equals(festivalGoerId))
                     .map(entry -> entry.balance)
@@ -145,6 +148,10 @@ class AcknowledgeOrderUseCaseTest {
 
         @Override
         public FestivalGoerBalance saveBalance(FestivalGoerBalance balance) {
+            if (lastRequestedFestivalGoerId == null) {
+                throw new IllegalStateException("saveBalance called before getBalance");
+            }
+            addBalance(lastRequestedFestivalGoerId, balance);
             return balance;
         }
 
