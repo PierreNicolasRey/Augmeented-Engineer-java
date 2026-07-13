@@ -5,6 +5,13 @@
 | Feature | Status | Last Updated | Layer | Notes |
 |---------|--------|--------------|-------|-------|
 | Place Order | Implementing | 2026-06-21 | Application | REST endpoint + DTOs defined; Domain Use Case interface only; Infrastructure not started |
+| Approve Order Change | Implementing | 2026-07-13 | Domain, Application | Pre-existing domain workflow plus newly added REST success-path contract; their port contract still needs alignment |
+
+## Project State
+
+The project currently contains partial implementations of the order-placement and order-change-approval flows. No infrastructure adapters or Spring dependency wiring are available for either flow, so the REST contracts are tested in isolation and are not yet runnable end to end.
+
+Recent work introduced the application-layer contract for the first scenario of approving an acknowledged order change. It builds on the pre-existing domain implementation, which removes transferable prepared items, adds requested items, saves the changed order, and publishes an approval event. The custom TDD-cycle agent workflow was also refined and documented to preserve scenario context between its RED, GREEN, and REFACTOR phases.
 
 ---
 
@@ -196,3 +203,86 @@ curl -X POST http://localhost:8080/api/v1/orders \
 1. Implement `PlaceOrderUseCase` in Domain layer (with full business logic and validation)
 2. Add persistence adapters in Infrastructure layer (JPA repositories, mappers)
 3. Add Domain event publishing for OrderCreatedEvent
+
+---
+
+## Feature: Approve Order Change
+
+### Summary
+
+Lets a bartender approve a requested change to an acknowledged order when every prepared item being removed can be transferred elsewhere. The newly added REST endpoint exposes the initial success response for the pre-existing domain workflow, which updates the order, stores it, and emits an approval event.
+
+### Status
+
+- **Implementing:** The first domain scenario and isolated application success-path contract are covered by tests. The domain implementation predates the application-layer addition and has not yet been adapted to [`ApproveOrderChangeUseCasePort`](../../domain/src/main/java/com/exalt/it/belair/domain/order/ports/in/ApproveOrderChangeUseCasePort.java): it currently returns `void`, while the new port returns an [`ApproveChangeReadModel`](../../domain/src/main/java/com/exalt/it/belair/domain/order/model/ApproveChangeReadModel.java). Dependency wiring and infrastructure adapters are also absent.
+
+### Public API / Contracts
+
+| Contract | Description |
+|----------|-------------|
+| `POST /api/v1/orders/{orderId}/changes/approve` | Approves an order-change request. The bartender identity is provided by the required `X-Bartender-Id` header. Returns `200 OK` for the currently covered success case. |
+| [`ApproveChangeResponseDTO`](../../application/src/main/java/com/exalt/it/belair/application/dto/ApproveChangeResponseDTO.java) | Response containing the order ID, status, revised readiness timestamp and duration, message, and approval timestamp. |
+| [`ApproveOrderChangeUseCasePort`](../../domain/src/main/java/com/exalt/it/belair/domain/order/ports/in/ApproveOrderChangeUseCasePort.java) | Intended inbound contract. It accepts an order ID and bartender ID and returns an `ApproveChangeReadModel`. |
+| [`OrderChangeApprovedEvent`](../../domain/src/main/java/com/exalt/it/belair/domain/order/events/OrderChangeApprovedEvent.java) | Domain event published after the order update is saved. |
+
+### Quick Usage
+
+```bash
+curl -X POST http://localhost:8080/api/v1/orders/ord-001/changes/approve \
+  -H "X-Bartender-Id: bartender-001"
+```
+
+**Expected response shape (200 OK):**
+
+```json
+{
+  "orderId": "ord-001",
+  "status": "ACKNOWLEDGED",
+  "newEstimatedReadinessAt": "2026-07-13T15:48:28",
+  "newEstimatedReadinessMinutes": 60,
+  "message": "Change approved",
+  "approvedAt": "2026-07-13T14:48:28"
+}
+```
+
+The response illustrates the API contract tested in isolation. Until the pre-existing domain implementation is aligned with the port and wired, the endpoint is not available in a running application.
+
+### Design Decisions
+
+**Dedicated command use case:** Approval changes order state and publishes a domain event, so it is modelled as [`ApproveOrderChangeUseCase`](../../domain/src/main/java/com/exalt/it/belair/domain/order/usecases/ApproveOrderChangeUseCase.java), not a query service. This follows the project's CQS-infused hexagonal architecture.
+
+**Transfer validation before mutation:** The use case checks each prepared item requested for removal through [`IItemTransferService`](../../domain/src/main/java/com/exalt/it/belair/domain/order/ports/out/IItemTransferService.java) before updating the order. This prevents a partially applied change when a prepared item cannot be reassigned.
+
+**Read-model REST boundary:** The controller maps the intended domain read model to an application DTO through [`ApproveChangeResponseMapper`](../../application/src/main/java/com/exalt/it/belair/application/mapper/ApproveChangeResponseMapper.java), keeping domain objects out of the HTTP response.
+
+### Tests & Validation
+
+| Test | Covered scenario |
+|------|------------------|
+| [`ApproveOrderChangeUseCaseTest`](../../domain/src/test/java/com/exalt/it/belair/domain/order/usecases/ApproveOrderChangeUseCaseTest.java) | Removes one transferable prepared item, adds one requested item, stores the updated acknowledged order, assigns a readiness timestamp, and publishes the approval event. |
+| [`ApproveOrderChangeControllerTest`](../../application/src/test/java/com/exalt/it/belair/application/order/rest/ApproveOrderChangeControllerTest.java) | Maps a successful port response to `200 OK` and serializes every response field. |
+
+The not-found, non-transferable-item, rejection, readiness-estimation, and end-to-end wiring scenarios have not yet been implemented.
+
+### Related Files
+
+**Application:**
+- Controller: [`ApproveOrderChangeController.java`](../../application/src/main/java/com/exalt/it/belair/application/rest/order/ApproveOrderChangeController.java)
+- Response DTO: [`ApproveChangeResponseDTO.java`](../../application/src/main/java/com/exalt/it/belair/application/dto/ApproveChangeResponseDTO.java)
+- Mapper: [`ApproveChangeResponseMapper.java`](../../application/src/main/java/com/exalt/it/belair/application/mapper/ApproveChangeResponseMapper.java)
+
+**Domain:**
+- Use case: [`ApproveOrderChangeUseCase.java`](../../domain/src/main/java/com/exalt/it/belair/domain/order/usecases/ApproveOrderChangeUseCase.java)
+- Inbound port: [`ApproveOrderChangeUseCasePort.java`](../../domain/src/main/java/com/exalt/it/belair/domain/order/ports/in/ApproveOrderChangeUseCasePort.java)
+- Read model: [`ApproveChangeReadModel.java`](../../domain/src/main/java/com/exalt/it/belair/domain/order/model/ApproveChangeReadModel.java)
+- Event: [`OrderChangeApprovedEvent.java`](../../domain/src/main/java/com/exalt/it/belair/domain/order/events/OrderChangeApprovedEvent.java)
+
+**Infrastructure:** Not implemented.
+
+### Changelog
+
+- `2026-07-13` — Documented the new application contract for the pre-existing approval-change workflow, its test coverage, and the remaining port-alignment work.
+
+### Notes
+
+The existing use case sets the readiness time to the current time; it does not yet calculate a revised readiness estimate. Its temporary `IllegalArgumentException` and `IllegalStateException` failures still need feature-specific domain exceptions and HTTP error mappings.
