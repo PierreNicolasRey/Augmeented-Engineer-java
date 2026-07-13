@@ -39,3 +39,8 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
+// Configure Java compiler to preserve parameter names for Spring's reflection
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-parameters")
+}
