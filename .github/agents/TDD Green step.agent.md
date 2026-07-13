@@ -9,7 +9,7 @@ handoffs:
   - label: Start Refactor step
     agent: TDD Refactor step
     prompt: The test is passing. Extract inner classes to production files and apply design patterns following STRICLTY the project architecture.
-    send: false
+    send: true
 ---
 
 # Green TDD Agent

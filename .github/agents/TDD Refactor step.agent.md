@@ -301,12 +301,12 @@ The agent **automatically accesses**:
   "feature_name": "Approve or Reject Order Changes",
   "scenario": "Approve change request with transferable prepared items",
   "test_file": "domain/src/test/java/com/it/exalt/belair/domain/order/usecases/PlaceOrderUseCaseTest.java",
-  "inner_classes_added": [
-    {"name": "DrinkTypeEnum", "type": "enum"},
-    {"name": "OrderStatusEnum", "type": "enum"},
-    {"name": "OrderItem", "type": "record"},
-    {"name": "Order", "type": "class"},
-    {"name": "PlaceOrderUseCase", "type": "class"}
+  "implemented_code": [
+    "DrinkTypeEnum",
+    "OrderStatusEnum",
+    "OrderItem",
+    "Order",
+    "PlaceOrderUseCase",
   ],
   "test_status": "PASSING"
 }

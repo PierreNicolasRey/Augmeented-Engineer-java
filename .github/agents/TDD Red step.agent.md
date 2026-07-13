@@ -9,7 +9,7 @@ handoffs:
   - label: Start Green step
     agent: TDD Green step
     prompt: The test is written. Implement minimal production code to make it pass Green.
-    send: false
+    send: true
 ---
 
 # Red TDD Agent
