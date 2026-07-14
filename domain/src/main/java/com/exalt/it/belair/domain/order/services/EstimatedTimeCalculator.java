@@ -4,6 +4,7 @@ import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
 import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
 import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,16 +24,17 @@ public class EstimatedTimeCalculator {
 
         for (OrderItem item : order.getItems()) {
             if (ITEM_TYPE_DRINK.equals(item.getItemType())) {
-                DrinkTypeEnum drinkType = resolveDrinkType(item);
-                if (drinkType == null) {
+                Optional<DrinkTypeEnum> drinkType = resolveDrinkType(item);
+                if (drinkType.isEmpty()) {
                     continue;
                 }
-                switch (drinkType) {
+                switch (drinkType.get()) {
                     case NON_ALCOHOLIC -> nonAlcoholicMinutes += item.getQuantity();
                     case NORMAL_ALCOHOLIC -> normalAlcoholicMinutes += item.getQuantity() * 2;
                     case PREMIUM_ALCOHOLIC -> premiumAlcoholicMinutes += item.getQuantity() * 3;
                 }
-            } else if (ITEM_TYPE_FOOD.equals(item.getItemType()) && FoodTypeEnum.SNACK.name().equals(item.getItemSubtype())) {
+            } else if (ITEM_TYPE_FOOD.equals(item.getItemType())
+                    && resolveFoodType(item).filter(type -> type == FoodTypeEnum.SNACK).isPresent()) {
                 snackMinutes += item.getQuantity() * 2;
             }
         }
@@ -50,25 +52,33 @@ public class EstimatedTimeCalculator {
     private int calculateMealMinutes(Order order) {
         Set<String> nonNullMealIds = order.getItems().stream()
                 .filter(item -> ITEM_TYPE_FOOD.equals(item.getItemType()))
-                .filter(item -> FoodTypeEnum.MEAL.name().equals(item.getItemSubtype()))
+                .filter(item -> resolveFoodType(item).filter(type -> type == FoodTypeEnum.MEAL).isPresent())
                 .map(OrderItem::getItemId)
                 .filter(itemId -> itemId != null)
                 .collect(Collectors.toSet());
 
         boolean hasGenericMealType = order.getItems().stream()
                 .filter(item -> ITEM_TYPE_FOOD.equals(item.getItemType()))
-                .filter(item -> FoodTypeEnum.MEAL.name().equals(item.getItemSubtype()))
+                .filter(item -> resolveFoodType(item).filter(type -> type == FoodTypeEnum.MEAL).isPresent())
                 .anyMatch(item -> item.getItemId() == null);
 
         int distinctMealTypes = nonNullMealIds.size() + (hasGenericMealType ? 1 : 0);
         return distinctMealTypes * 10;
     }
 
-    private DrinkTypeEnum resolveDrinkType(OrderItem item) {
+    private Optional<DrinkTypeEnum> resolveDrinkType(OrderItem item) {
         try {
-            return DrinkTypeEnum.valueOf(item.getItemSubtype());
+            return Optional.of(DrinkTypeEnum.valueOf(item.getItemSubtype()));
         } catch (IllegalArgumentException ex) {
-            return null;
+            return Optional.empty();
+        }
+    }
+
+    private Optional<FoodTypeEnum> resolveFoodType(OrderItem item) {
+        try {
+            return Optional.of(FoodTypeEnum.valueOf(item.getItemSubtype()));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
         }
     }
 }
