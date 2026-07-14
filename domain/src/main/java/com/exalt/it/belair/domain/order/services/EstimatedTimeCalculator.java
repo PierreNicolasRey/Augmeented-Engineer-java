@@ -1,5 +1,6 @@
 package com.exalt.it.belair.domain.order.services;
 
+import com.exalt.it.belair.domain.order.exceptions.InvalidSubtypeException;
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
 import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
@@ -68,7 +69,7 @@ public class EstimatedTimeCalculator {
         try {
             return Optional.of(DrinkTypeEnum.valueOf(item.getItemSubtype()));
         } catch (IllegalArgumentException ex) {
-            return Optional.empty();
+            throw new InvalidSubtypeException("Invalid drink subtype: " + item.getItemSubtype());
         }
     }
 

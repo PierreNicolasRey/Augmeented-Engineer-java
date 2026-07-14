@@ -1,5 +1,6 @@
 package com.exalt.it.belair.domain.order.services;
 
+import com.exalt.it.belair.domain.order.exceptions.InvalidSubtypeException;
 import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
 import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
 import com.exalt.it.belair.domain.order.model.Order;
@@ -9,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EstimatedTimeCalculatorTest {
     private final EstimatedTimeCalculator sut = new EstimatedTimeCalculator();
@@ -74,6 +76,15 @@ class EstimatedTimeCalculatorTest {
         ));
 
         assertThat(sut.calculateEstimatedTimeMinutes(order)).isEqualTo(17);
+    }
+
+    @Test
+    void calculateEstimatedTimeMinutes_shouldThrowInvalidSubtypeExceptionForUnknownDrinkSubtype() {
+        Order order = createOrder(List.of(new OrderItem("drink-1", "DRINK", "UNKNOWN_SUBTYPE", 1)));
+
+        assertThatThrownBy(() -> sut.calculateEstimatedTimeMinutes(order))
+                .isInstanceOf(InvalidSubtypeException.class)
+                .hasMessage("Invalid drink subtype: UNKNOWN_SUBTYPE");
     }
 
     private Order createOrder(List<OrderItem> items) {
