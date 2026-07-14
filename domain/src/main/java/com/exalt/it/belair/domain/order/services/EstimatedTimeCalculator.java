@@ -26,7 +26,7 @@ public class EstimatedTimeCalculator {
             if (ITEM_TYPE_DRINK.equals(item.getItemType())) {
                 Optional<DrinkTypeEnum> drinkType = resolveDrinkType(item);
                 if (drinkType.isPresent()) {
-                    switch (drinkType.orElseThrow()) {
+                    switch (drinkType.get()) {
                         case NON_ALCOHOLIC -> nonAlcoholicMinutes += item.getQuantity();
                         case NORMAL_ALCOHOLIC -> normalAlcoholicMinutes += item.getQuantity() * 2;
                         case PREMIUM_ALCOHOLIC -> premiumAlcoholicMinutes += item.getQuantity() * 3;
@@ -72,17 +72,11 @@ public class EstimatedTimeCalculator {
         }
     }
 
-    private Optional<FoodTypeEnum> resolveFoodType(OrderItem item) {
-        try {
-            return Optional.of(FoodTypeEnum.valueOf(item.getItemSubtype()));
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
-    }
-
     private boolean isFoodSubtype(OrderItem item, FoodTypeEnum expectedSubtype) {
-        return resolveFoodType(item)
-                .map(expectedSubtype::equals)
-                .orElse(false);
+        try {
+            return expectedSubtype == FoodTypeEnum.valueOf(item.getItemSubtype());
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 }
