@@ -47,19 +47,32 @@ public class AcknowledgeOrderUseCase implements AcknowledgeOrderUseCasePort {
     }
 
     @Override
-    public void execute(String orderId) {
+    public void acknowledgeOrder(String orderId) {
+        Order order = verifyOrderCanBeAcknowledged(orderId);
+        FestivalGoerBalance balance = consumeReservedFestivalGoerTokens(order);
+        AcknowledgementDetails acknowledgementDetails = updateOrderWithEstimatedReadiness(order);
+        persistOrderAndBalance(order, balance);
+        publishAcknowledgementEvent(order, acknowledgementDetails);
+    }
+
+    private Order verifyOrderCanBeAcknowledged(String orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
-
         if (!OrderStatusEnum.PENDING.equals(order.getStatus())) {
             throw new OrderCannotBeAcknowledgedException(
                     "Order cannot be acknowledged from status: " + order.getStatus()
             );
         }
+        return order;
+    }
 
+    private FestivalGoerBalance consumeReservedFestivalGoerTokens(Order order) {
         FestivalGoerBalance balance = festivalGoerRepository.getBalance(order.getFestivalGoerId());
         balance.consumeTokens(order.getReservedDrinkTokens(), order.getReservedSnackTokens());
+        return balance;
+    }
 
+    private AcknowledgementDetails updateOrderWithEstimatedReadiness(Order order) {
         int estimatedMinutes = estimatedTimeCalculator.calculateEstimatedTimeMinutes(order);
         Instant now = Instant.now();
         LocalDateTime estimatedReadinessAt = LocalDateTime.ofInstant(now, ZoneId.systemDefault())
@@ -69,15 +82,23 @@ public class AcknowledgeOrderUseCase implements AcknowledgeOrderUseCasePort {
         order.setEstimatedReadinessAt(estimatedReadinessAt);
         order.setEstimatedReadinessMinutes(estimatedMinutes);
         order.setUpdatedAt(now);
+        return new AcknowledgementDetails(now, estimatedReadinessAt);
+    }
 
+    private void persistOrderAndBalance(Order order, FestivalGoerBalance balance) {
         festivalGoerRepository.saveBalance(balance);
         orderRepository.save(order);
+    }
 
+    private void publishAcknowledgementEvent(Order order, AcknowledgementDetails acknowledgementDetails) {
         eventPublisher.publish(new OrderAcknowledgedEvent(
                 order.getId(),
                 order.getFestivalGoerId(),
-                estimatedReadinessAt,
-                now
+                acknowledgementDetails.estimatedReadinessAt(),
+                acknowledgementDetails.acknowledgedAt()
         ));
+    }
+
+    private record AcknowledgementDetails(Instant acknowledgedAt, LocalDateTime estimatedReadinessAt) {
     }
 }

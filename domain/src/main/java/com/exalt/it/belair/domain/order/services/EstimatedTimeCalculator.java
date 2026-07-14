@@ -2,6 +2,8 @@ package com.exalt.it.belair.domain.order.services;
 
 import com.exalt.it.belair.domain.order.model.Order;
 import com.exalt.it.belair.domain.order.model.OrderItem;
+import com.exalt.it.belair.domain.order.model.DrinkTypeEnum;
+import com.exalt.it.belair.domain.order.model.FoodTypeEnum;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -11,11 +13,6 @@ import java.util.stream.Collectors;
 public class EstimatedTimeCalculator {
     private static final String ITEM_TYPE_DRINK = "DRINK";
     private static final String ITEM_TYPE_FOOD = "FOOD";
-    private static final String DRINK_SUBTYPE_NON_ALCOHOLIC = "NON_ALCOHOLIC";
-    private static final String DRINK_SUBTYPE_NORMAL_ALCOHOLIC = "NORMAL_ALCOHOLIC";
-    private static final String DRINK_SUBTYPE_PREMIUM_ALCOHOLIC = "PREMIUM_ALCOHOLIC";
-    private static final String FOOD_SUBTYPE_SNACK = "SNACK";
-    private static final String FOOD_SUBTYPE_MEAL = "MEAL";
 
     public int calculateEstimatedTimeMinutes(Order order) {
         int nonAlcoholicMinutes = 0;
@@ -26,14 +23,16 @@ public class EstimatedTimeCalculator {
 
         for (OrderItem item : order.getItems()) {
             if (ITEM_TYPE_DRINK.equals(item.getItemType())) {
-                if (DRINK_SUBTYPE_NON_ALCOHOLIC.equals(item.getItemSubtype())) {
-                    nonAlcoholicMinutes += item.getQuantity();
-                } else if (DRINK_SUBTYPE_NORMAL_ALCOHOLIC.equals(item.getItemSubtype())) {
-                    normalAlcoholicMinutes += item.getQuantity() * 2;
-                } else if (DRINK_SUBTYPE_PREMIUM_ALCOHOLIC.equals(item.getItemSubtype())) {
-                    premiumAlcoholicMinutes += item.getQuantity() * 3;
+                DrinkTypeEnum drinkType = resolveDrinkType(item);
+                if (drinkType == null) {
+                    continue;
                 }
-            } else if (ITEM_TYPE_FOOD.equals(item.getItemType()) && FOOD_SUBTYPE_SNACK.equals(item.getItemSubtype())) {
+                switch (drinkType) {
+                    case NON_ALCOHOLIC -> nonAlcoholicMinutes += item.getQuantity();
+                    case NORMAL_ALCOHOLIC -> normalAlcoholicMinutes += item.getQuantity() * 2;
+                    case PREMIUM_ALCOHOLIC -> premiumAlcoholicMinutes += item.getQuantity() * 3;
+                }
+            } else if (ITEM_TYPE_FOOD.equals(item.getItemType()) && FoodTypeEnum.SNACK.name().equals(item.getItemSubtype())) {
                 snackMinutes += item.getQuantity() * 2;
             }
         }
@@ -51,17 +50,25 @@ public class EstimatedTimeCalculator {
     private int calculateMealMinutes(Order order) {
         Set<String> nonNullMealIds = order.getItems().stream()
                 .filter(item -> ITEM_TYPE_FOOD.equals(item.getItemType()))
-                .filter(item -> FOOD_SUBTYPE_MEAL.equals(item.getItemSubtype()))
+                .filter(item -> FoodTypeEnum.MEAL.name().equals(item.getItemSubtype()))
                 .map(OrderItem::getItemId)
                 .filter(itemId -> itemId != null)
                 .collect(Collectors.toSet());
 
         boolean hasGenericMealType = order.getItems().stream()
                 .filter(item -> ITEM_TYPE_FOOD.equals(item.getItemType()))
-                .filter(item -> FOOD_SUBTYPE_MEAL.equals(item.getItemSubtype()))
+                .filter(item -> FoodTypeEnum.MEAL.name().equals(item.getItemSubtype()))
                 .anyMatch(item -> item.getItemId() == null);
 
         int distinctMealTypes = nonNullMealIds.size() + (hasGenericMealType ? 1 : 0);
         return distinctMealTypes * 10;
+    }
+
+    private DrinkTypeEnum resolveDrinkType(OrderItem item) {
+        try {
+            return DrinkTypeEnum.valueOf(item.getItemSubtype());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

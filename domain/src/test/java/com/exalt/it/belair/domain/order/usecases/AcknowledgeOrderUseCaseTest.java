@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 class AcknowledgeOrderUseCaseTest {
     private AcknowledgeOrderUseCase sut;
@@ -37,7 +38,8 @@ class AcknowledgeOrderUseCaseTest {
     }
 
     @Test
-    void execute_shouldAcknowledgePendingOrderConsumeTokensAndPublishEvent() {
+    void acknowledgeOrder_shouldAcknowledgePendingOrderConsumeTokensAndPublishEvent() {
+        // GIVEN
         String orderId = "ord-001";
         String festivalGoerId = "fgv-001";
         FestivalGoerBalance balance = new FestivalGoerBalance(6, 9);
@@ -55,57 +57,80 @@ class AcknowledgeOrderUseCaseTest {
         orderRepository.add(order);
 
         LocalDateTime acknowledgmentBaseline = LocalDateTime.now();
-        sut.execute(orderId);
+        
+        // WHEN
+        sut.acknowledgeOrder(orderId);
 
+        // THEN
         Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
-        assertThat(updatedOrder.getStatus()).isEqualTo(OrderStatusEnum.ACKNOWLEDGED);
-        assertThat(updatedOrder.getEstimatedReadinessMinutes()).isEqualTo(3);
-        assertThat(updatedOrder.getEstimatedReadinessAt()).isNotNull();
-        assertThat(updatedOrder.getUpdatedAt()).isNotNull();
-
         FestivalGoerBalance updatedBalance = festivalGoerRepository.getBalance(festivalGoerId);
-        assertThat(updatedBalance.getDrinkTokens()).isEqualTo(4);
-        assertThat(updatedBalance.getReservedDrinkTokens()).isEqualTo(0);
-        assertThat(updatedBalance.getSnackTokens()).isEqualTo(6);
-        assertThat(updatedBalance.getReservedSnackTokens()).isEqualTo(0);
 
-        assertThat(eventPublisher.events).hasSize(1);
-        OrderAcknowledgedEvent event = eventPublisher.events.get(0);
-        assertThat(event.getOrderId()).isEqualTo(orderId);
-        assertThat(event.getFestivalGoerId()).isEqualTo(festivalGoerId);
-        assertThat(event.getEstimatedReadinessAt()).isEqualTo(updatedOrder.getEstimatedReadinessAt());
-        assertThat(event.getEstimatedReadinessAt())
-                .isAfterOrEqualTo(acknowledgmentBaseline.plusMinutes(3))
-                .isBeforeOrEqualTo(acknowledgmentBaseline.plusMinutes(4));
-        assertThat(event.getAcknowledgedAt()).isNotNull();
+        assertAll(
+                "Order acknowledgement flow",
+                () -> assertAll(
+                        "Order updated",
+                        () -> assertThat(updatedOrder.getStatus()).isEqualTo(OrderStatusEnum.ACKNOWLEDGED),
+                        () -> assertThat(updatedOrder.getEstimatedReadinessMinutes()).isEqualTo(3),
+                        () -> assertThat(updatedOrder.getEstimatedReadinessAt()).isNotNull(),
+                        () -> assertThat(updatedOrder.getUpdatedAt()).isNotNull()
+                ),
+                () -> assertAll(
+                        "Festival goer balance consumed",
+                        () -> assertThat(updatedBalance.getDrinkTokens()).isEqualTo(4),
+                        () -> assertThat(updatedBalance.getReservedDrinkTokens()).isEqualTo(0),
+                        () -> assertThat(updatedBalance.getSnackTokens()).isEqualTo(6),
+                        () -> assertThat(updatedBalance.getReservedSnackTokens()).isEqualTo(0)
+                ),
+                () -> assertAll(
+                        "Event published",
+                        () -> assertThat(eventPublisher.events).hasSize(1),
+                        () -> assertThat(eventPublisher.events.get(0).getOrderId()).isEqualTo(orderId),
+                        () -> assertThat(eventPublisher.events.get(0).getFestivalGoerId()).isEqualTo(festivalGoerId),
+                        () -> assertThat(eventPublisher.events.get(0).getEstimatedReadinessAt())
+                                .isEqualTo(updatedOrder.getEstimatedReadinessAt()),
+                        () -> assertThat(eventPublisher.events.get(0).getEstimatedReadinessAt())
+                                .isAfterOrEqualTo(acknowledgmentBaseline.plusMinutes(3))
+                                .isBeforeOrEqualTo(acknowledgmentBaseline.plusMinutes(4)),
+                        () -> assertThat(eventPublisher.events.get(0).getAcknowledgedAt()).isNotNull()
+                )
+        );
     }
 
     @Test
-    void execute_shouldThrowWhenOrderIsNotFound() {
-        assertThatThrownBy(() -> sut.execute("ord-missing"))
+    void acknowledgeOrder_shouldThrowWhenOrderIsNotFound() {
+        // GIVEN
+        
+        // WHEN / THEN
+        assertThatThrownBy(() -> sut.acknowledgeOrder("ord-missing"))
                 .isInstanceOf(OrderNotFoundException.class);
     }
 
     @Test
-    void execute_shouldThrowWhenOrderIsNotPending() {
+    void acknowledgeOrder_shouldThrowWhenOrderIsNotPending() {
+        // GIVEN
         String orderId = "ord-ack";
         Order order = new Order(orderId, "fgv-001", List.of(), OrderStatusEnum.ACKNOWLEDGED);
         orderRepository.add(order);
 
-        assertThatThrownBy(() -> sut.execute(orderId))
+        // WHEN / THEN
+        assertThatThrownBy(() -> sut.acknowledgeOrder(orderId))
                 .isInstanceOf(OrderCannotBeAcknowledgedException.class)
                 .hasMessageContaining("ACKNOWLEDGED");
     }
 
     @Test
-    void execute_shouldThrowWhenFestivalGoerIsNotFound() {
+    void acknowledgeOrder_shouldThrowWhenFestivalGoerIsNotFound() {
+        // GIVEN
         String orderId = "ord-001";
         Order order = new Order(orderId, "fgv-missing", List.of(), OrderStatusEnum.PENDING);
         orderRepository.add(order);
 
-        assertThatThrownBy(() -> sut.execute(orderId))
+        // WHEN / THEN
+        assertThatThrownBy(() -> sut.acknowledgeOrder(orderId))
                 .isInstanceOf(FestivalGoerNotFoundException.class);
     }
+
+    // ============ TEST FAKES ============
 
     static class TestOrderRepository implements IOrderRepository {
         private final List<Order> store = new ArrayList<>();
