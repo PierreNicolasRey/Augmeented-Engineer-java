@@ -98,8 +98,6 @@ class AcknowledgeOrderUseCaseTest {
 
     @Test
     void acknowledgeOrder_shouldThrowWhenOrderIsNotFound() {
-        // GIVEN
-        
         // WHEN / THEN
         assertThatThrownBy(() -> sut.acknowledgeOrder("ord-missing"))
                 .isInstanceOf(OrderNotFoundException.class);
