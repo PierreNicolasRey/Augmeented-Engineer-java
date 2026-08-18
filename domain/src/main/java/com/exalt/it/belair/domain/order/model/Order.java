@@ -18,6 +18,7 @@ public class Order {
     private int reservedSnackTokens = 0;
     private Instant updatedAt;
     private LocalDateTime estimatedReadinessAt;
+    private int estimatedReadinessMinutes = 0;
 
     /**
      * Constructs an Order with the specified parameters.
@@ -118,6 +119,24 @@ public class Order {
      */
     public LocalDateTime getEstimatedReadinessAt() {
         return estimatedReadinessAt;
+    }
+
+    /**
+     * Gets the estimated readiness time in minutes for this order.
+     *
+     * @return estimated readiness duration in minutes
+     */
+    public int getEstimatedReadinessMinutes() {
+        return estimatedReadinessMinutes;
+    }
+
+    /**
+     * Sets the estimated readiness time in minutes for this order.
+     *
+     * @param estimatedReadinessMinutes estimated readiness duration in minutes
+     */
+    public void setEstimatedReadinessMinutes(int estimatedReadinessMinutes) {
+        this.estimatedReadinessMinutes = estimatedReadinessMinutes;
     }
 
     /**

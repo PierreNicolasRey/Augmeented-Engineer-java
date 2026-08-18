@@ -108,4 +108,31 @@ public class FestivalGoerBalance {
         reservedDrinkTokens -= drinkTokens;
         reservedSnackTokens -= snackTokens;
     }
+
+    /**
+     * Consumes reserved tokens when an order is acknowledged.
+     * This permanently deducts consumed tokens from total balances and releases
+     * matching reserved amounts.
+     *
+     * @param drinkTokens number of reserved drink tokens to consume
+     * @param snackTokens number of reserved snack tokens to consume
+     */
+    public void consumeTokens(int drinkTokens, int snackTokens) {
+        int newTotalDrinkTokens = totalDrinkTokens - drinkTokens;
+        int newReservedDrinkTokens = reservedDrinkTokens - drinkTokens;
+        int newTotalSnackTokens = totalSnackTokens - snackTokens;
+        int newReservedSnackTokens = reservedSnackTokens - snackTokens;
+
+        if (newTotalDrinkTokens < 0 || newReservedDrinkTokens < 0) {
+            throw new InsufficientTokensException("Insufficient drink tokens");
+        }
+        if (newTotalSnackTokens < 0 || newReservedSnackTokens < 0) {
+            throw new InsufficientTokensException("Insufficient snack tokens");
+        }
+
+        totalDrinkTokens = newTotalDrinkTokens;
+        reservedDrinkTokens = newReservedDrinkTokens;
+        totalSnackTokens = newTotalSnackTokens;
+        reservedSnackTokens = newReservedSnackTokens;
+    }
 }
